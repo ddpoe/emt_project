@@ -18,21 +18,22 @@ def main():
     meta=pd.read_csv(meta_path)
     n_top_genes = 2000
     print('data read complete', flush=True)
-    cells=meta['Unnamed: 0'].to_numpy()
+    cells = meta['Unnamed: 0'].to_numpy()
     
     # print('flag1')
     # treatment=np.array([[meta['Time'][np.squeeze(np.argwhere(cells==cell))]][0] for cell in adata.obs_names])
     # print('flag2')
     # adata.obs['treatment']=treatment
     # print('flag3')
-    count_matrix=adata.X.todense()[:, ...]
-    
+    count_matrix = adata.X.todense()[:, ...]
+    print('count matrix nonzerorate:', np.count_nonzero(count_matrix) / np.prod(count_matrix.shape))
+
     scv.pp.filter_and_normalize(adata, n_top_genes=n_top_genes)
     scv.pp.moments(adata)
     scv.tl.velocity(adata)
     scv.tl.velocity_graph(adata)
     velocities=adata.layers['velocity']
-
+    print('velocities matrix nonzero rate:', np.count_nonzero(velocities) / np.prod(velocities.shape))
     scv.tl.terminal_states(adata)
     root_cells = adata.obs['root_cells']
     end_cells = adata.obs['end_points']
@@ -42,49 +43,56 @@ def main():
     # gen figures
     scv.pl.velocity_embedding_stream(adata, save='vel_stream.png')
     scv.pl.scatter(adata, color=[ 'root_cells', 'end_points'], save='root_end_points.png')
-    
-    '''
-    MAR
-    '''
-    pca=PCA(n_components=n_top_genes,random_state=0).fit(count_matrix)
-    pca_count_matrix=pca.transform(count_matrix)
-    # knee = get_optimal_K(pca_count_matrix, kmin=1, kmax=21)
-    knee = 7 # calculated
-    print('knee of kmeans graph:', knee)
-    kmeans = KMeans(n_clusters=knee ,random_state=0).fit(pca_count_matrix)
-    cluster_centers=kmeans.cluster_centers_
-    labels=kmeans.labels_
-    print('computing  MAR')
-    label_set = set(labels)
-    errors = np.zeros(len(labels))
-    adata.obs['kmeans_labels'] = labels
-    for label in label_set:
-        print('label:', label)
-        indices = labels == label
-        label_count_matrix = pca_count_matrix[indices, ...]
-        label_velocities = velocities[indices, ...]
-        model=LinearRegression().fit(label_count_matrix, label_velocities)
-        predicted_velocities = model.predict(label_count_matrix)
+
+
+    def main_MAR():
+        '''
+        MAR
+        '''
+        pca=PCA(n_components=n_top_genes,random_state=0).fit(count_matrix)
+        pca_count_matrix=pca.transform(count_matrix)
+        # knee = get_optimal_K(pca_count_matrix, kmin=1, kmax=21)
+        knee = 7 # calculated
+        print('knee of kmeans graph:', knee)
+        kmeans = KMeans(n_clusters=knee ,random_state=0).fit(pca_count_matrix)
+        cluster_centers=kmeans.cluster_centers_
+        labels=kmeans.labels_
+        print('computing  MAR')
+        label_set = set(labels)
+        errors = np.zeros(len(labels))
+        adata.obs['kmeans_labels'] = labels
+        for label in label_set:
+            print('label:', label)
+            indices = labels == label
+            label_count_matrix = pca_count_matrix[indices, ...]
+            label_velocities = velocities[indices, ...]
+            model=LinearRegression().fit(label_count_matrix, label_velocities)
+            predicted_velocities = model.predict(label_count_matrix)
+
+            diff = predicted_velocities - label_velocities
+            diff = np.sum(np.abs(diff)**2,axis=-1)**.5
+            errors[indices] = diff
         
-        diff = predicted_velocities - label_velocities
-        diff = np.sum(np.abs(diff)**2,axis=-1)**.5
-        errors[indices] = diff
-        
-    adata.obs['mar_mse'] = errors
-    # scv.pl.scatter(adata, color=[ 'root_cells', 'end_points', 'errors', 'kmeans_labels'], save='error_root_end_points.png')
-    scv.pl.scatter(adata, color=[ 'root_cells', 'end_points', 'mar_mse', 'kmeans_labels'], save='error_root_end_points.png')
+            adata.obs['mar_mse'] = errors
+            # scv.pl.scatter(adata, color=[ 'root_cells', 'end_points', 'errors', 'kmeans_labels'], save='error_root_end_points.png')
+            scv.pl.scatter(adata, color=[ 'root_cells', 'end_points', 'mar_mse', 'kmeans_labels'], save='error_root_end_points.png')
     
 
-    
-    '''
-    graph lasso
-    '''
-    print('count matrix dimension:', count_matrix.shape)
-    print('velocities dimension:', velocities.shape)
-    count_matrix=adata.X.A
-    print('computing graph lassos')
-    run_graphlasso(count_matrix, prefix='count_matrix')
-    run_graphlasso(velocities, prefix='velocity')
 
+    def main_graphlasso():
+        '''
+        graph lasso
+        '''
+        # count_matrix=adata.X.A
+        print('count matrix dimension:', count_matrix.shape)
+        print('velocities dimension:', velocities.shape)
+        
+        print('computing graph lassos')
+        # run_graphlasso(count_matrix[:, :1000], prefix='count_matrix')
+        run_graphlasso(velocities[:, :100], prefix='velocity')
+
+    main_MAR()
+    # main_graphlasso()
+    
 if __name__ == '__main__':
     main()

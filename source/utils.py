@@ -40,4 +40,3 @@ def get_optimal_K(X, kmin=1, kmax=21):
     kn = KneeLocator(K, distortions, curve='convex', direction='decreasing')
     return kn.knee
 
-
