@@ -38,5 +38,6 @@ def get_optimal_K(X, kmin=1, kmax=21):
                                        'euclidean'),axis=1)) / X.shape[0] 
         k2inertia[k] = kmeanModel.inertia_ 
     kn = KneeLocator(K, distortions, curve='convex', direction='decreasing')
-    return kn
+    return kn.knee
+
 
