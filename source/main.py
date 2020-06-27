@@ -16,10 +16,11 @@ def main():
     meta_path = '../data/a549_tgfb1_meta.csv'
     adata=dyn.read_loom(loom_data_path)
     meta=pd.read_csv(meta_path)
+    # adata = scv.datasets.pancreas()
+    
     n_top_genes = 2000
     print('data read complete', flush=True)
-    cells = meta['Unnamed: 0'].to_numpy()
-    
+    # cells = meta['Unnamed: 0'].to_numpy()
     # print('flag1')
     # treatment=np.array([[meta['Time'][np.squeeze(np.argwhere(cells==cell))]][0] for cell in adata.obs_names])
     # print('flag2')
@@ -42,25 +43,30 @@ def main():
 
     # gen figures
     scv.pl.velocity_embedding_stream(adata, save='vel_stream.png')
-    scv.pl.scatter(adata, color=[ 'root_cells', 'end_points'], save='root_end_points.png')
 
 
     def main_MAR():
         '''
         MAR
         '''
-        pca=PCA(n_components=n_top_genes,random_state=0).fit(count_matrix)
+        pca=PCA(n_components=n_top_genes,random_state=7).fit(count_matrix)
         pca_count_matrix=pca.transform(count_matrix)
         # knee = get_optimal_K(pca_count_matrix, kmin=1, kmax=21)
         knee = 7 # calculated
         print('knee of kmeans graph:', knee)
         kmeans = KMeans(n_clusters=knee ,random_state=0).fit(pca_count_matrix)
         cluster_centers=kmeans.cluster_centers_
-        labels=kmeans.labels_
+        kmeans_labels=kmeans.labels_
+        adata.obs['kmeans_labels'] = kmeans_labels
+        
         print('computing  MAR')
+
+        scv_labels = adata.obs['Clusters']
+
+        labels = scv_labels
         label_set = set(labels)
         errors = np.zeros(len(labels))
-        adata.obs['kmeans_labels'] = labels
+        # model=LinearRegression().fit(pca_count_matrix, velocities)
         for label in label_set:
             print('label:', label)
             indices = labels == label
@@ -70,12 +76,15 @@ def main():
             predicted_velocities = model.predict(label_count_matrix)
 
             diff = predicted_velocities - label_velocities
-            diff = np.sum(np.abs(diff)**2,axis=-1)**.5
+            diff = np.sum(diff**2, axis=-1)
             errors[indices] = diff
-        
-            adata.obs['mar_mse'] = errors
+            
+            adata.obs['sample_squared_error'] = errors
+
+            score = model.score(label_count_matrix, label_velocities)
+            print('label:%d, r^2 score: %f.5' % (label, score))
             # scv.pl.scatter(adata, color=[ 'root_cells', 'end_points', 'errors', 'kmeans_labels'], save='error_root_end_points.png')
-            scv.pl.scatter(adata, color=[ 'root_cells', 'end_points', 'mar_mse', 'kmeans_labels'], save='error_root_end_points.png')
+        scv.pl.scatter(adata, color=[ 'root_cells', 'end_points', 'sample_squared_error', 'kmeans_labels', 'Clusters'], save='error_root_end_points.png')
     
 
 
