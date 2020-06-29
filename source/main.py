@@ -71,7 +71,7 @@ def analyze_specific_cluster(adata, indices,
         print(e)
         
     jacob = model.coef_
-    selected_genes = ['FN1']
+    selected_genes = ['FN1', 'SNAI2', 'ZEB2', 'TWIST1']
 
     # todo : if PCA space, we need to transform coefficient to true Jacobian.
     analyze_jacobian(cluster_data, jacob, selected_genes)
@@ -82,6 +82,9 @@ def analyze_jacobian(adata, jacob, selected_genes, topk=5):
     # adata.var_names.get_loc('FN1')
 
     for gene in selected_genes:
+        if not (gene in genes):
+            print(gene, 'is not in top gene list')
+            continue
         idx = adata.var_names.get_loc(gene)
         row_coef = jacob[idx, :]
         args = np.argsort(-np.abs(row_coef))
@@ -104,6 +107,8 @@ def main():
     # filter by emt genes
     print('filtering genes by only using known emt genes')
     intersection_genes = set(adata.var_names).intersection(emt_genes)
+    print('intersection genes:', intersection_genes)
+    
     adata = adata[:, list(intersection_genes)]
     
     n_top_genes = 50 # not 2000 because of # observations
@@ -117,6 +122,7 @@ def main():
     
     meta['Unnamed: 0']=CellIDs
     cells = meta['Unnamed: 0'].to_numpy()
+    # time_raw = [meta['Time'][cells==cell][cell] for cell in adata.obs_names]
     time_raw = np.array([[meta['Time'][np.squeeze(np.argwhere(cells==cell))]][0] for cell in adata.obs_names])
     adata.obs['Time'] = time_raw
 
