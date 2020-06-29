@@ -44,3 +44,9 @@ def get_optimal_K(X, kmin=1, kmax=21):
     kn = KneeLocator(K, distortions, curve='convex', direction='decreasing')
     return kn.knee
 
+def read_list(path):
+    with open(path, 'r') as f:
+        data = []
+        for line in f:
+            data.append(line.replace('\n', ''))
+        return data
