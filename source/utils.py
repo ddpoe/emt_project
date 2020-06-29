@@ -18,6 +18,10 @@ from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression
 import sklearn
 import sklearn.covariance
+import scipy
+import scipy.sparse.linalg
+import numpy.linalg
+import sklearn.metrics
 
 def get_optimal_K(X, kmin=1, kmax=21):
     distortions = [] 
