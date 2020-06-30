@@ -11,6 +11,7 @@ def run_graphlasso(X, lm=0.001, prefix=''):
     pass
 
 
+
 def analyze_specific_cluster(adata, indices,
                              predicted_velocities, errors,
                              model, cluster_label):
@@ -70,7 +71,9 @@ def analyze_specific_cluster(adata, indices,
         print(e)
         
     jacob = model.coef_
-    selected_genes = ['FN1', 'IL11', 'LAMC2']
+    selected_genes = ['FN1', 'SNAI2', 'ZEB2', 'TWIST1']
+
+    # todo : if PCA space, we need to transform coefficient to true Jacobian.
     analyze_jacobian(cluster_data, jacob, selected_genes)
 
     
@@ -79,28 +82,54 @@ def analyze_jacobian(adata, jacob, selected_genes, topk=5):
     # adata.var_names.get_loc('FN1')
 
     for gene in selected_genes:
+        if not (gene in genes):
+            print(gene, 'is not in top gene list')
+            continue
         idx = adata.var_names.get_loc(gene)
-        
-        row = jacob[idx, :]
-        args = np.argsort(-np.abs(row))
+        row_coef = jacob[idx, :]
+        args = np.argsort(-np.abs(row_coef))
         print('gene:', gene)
         print('top inhib/exhibit genes:', genes[args[:topk]])
-        print('top inhib/exhibit genes coefs:', row[args[:topk]])
+        print('top inhib/exhibit genes coefs:', row_coef[args[:topk]])
         
-
+    
 def main():
     loom_data_path = '../data/a549_tgfb1.loom'
     meta_path = '../data/a549_tgfb1_meta.csv'
-    adata=dyn.read_loom(loom_data_path)
+    # adata=dyn.read_loom(loom_data_path)
+    adata=scv.read_loom(loom_data_path)
     meta=pd.read_csv(meta_path)
     # adata = scv.datasets.pancreas()
+    emt_gene_path = '../data/gene_lists/emt_genes_weikang.txt'
+    emt_genes = read_list(emt_gene_path)
+
     
-    n_top_genes = 50
+    # filter by emt genes
+    print('filtering genes by only using known emt genes')
+    intersection_genes = set(adata.var_names).intersection(emt_genes)
+    print('intersection genes:', intersection_genes)
+    
+    adata = adata[:, list(intersection_genes)]
+    
+    n_top_genes = 50 # not 2000 because of # observations
     print('data read complete', flush=True)
-    # cells = meta['Unnamed: 0'].to_numpy()
-    # print('flag1')
-    # treatment=np.array([[meta['Time'][np.squeeze(np.argwhere(cells==cell))]][0] for cell in adata.obs_names])
-    # print('flag2')
+
+    CellIDs=np.array(meta["Unnamed: 0"])+'x'
+    for ID in range(len(CellIDs)):
+        #This is needed to make the cell ids have the same syntax as the loom files 
+        CellIDs[ID]=re.sub('x',"x-",CellIDs[ID],count=1)
+        CellIDs[ID]=re.sub('_',":",CellIDs[ID])
+    
+    meta['Unnamed: 0']=CellIDs
+    cells = meta['Unnamed: 0'].to_numpy()
+    # time_raw = [meta['Time'][cells==cell][cell] for cell in adata.obs_names]
+    time_raw = np.array([[meta['Time'][np.squeeze(np.argwhere(cells==cell))]][0] for cell in adata.obs_names])
+    adata.obs['Time'] = time_raw
+
+    time_raw = adata.obs['Time']
+    # no _rm in time means EMT
+    is_EMT = np.array([time.find('_rm')==-1 for time in time_raw])
+    adata = adata[is_EMT]
     treatment = meta['Treatment']
     adata.obs['treatment']=treatment
     # print('flag3')
@@ -118,11 +147,15 @@ def main():
     root_cells = adata.obs['root_cells']
     end_cells = adata.obs['end_points']
     print('root cell shape:', root_cells.shape)
-    print(root_cells[:5])
 
     # gen figures
     scv.pl.velocity_embedding_stream(adata, save='vel_stream.png')
 
+
+    # gen ranked genes
+    scv.tl.rank_velocity_genes(adata, groupby='Clusters')
+    df = scv.DataFrame(adata.uns['rank_velocity_genes']['names'])
+    df.head().to_csv('rank_genes_vf.csv')
 
     def main_MAR():
         '''
@@ -137,9 +170,10 @@ def main():
         cluster_centers=kmeans.cluster_centers_
         kmeans_labels=kmeans.labels_
         adata.obs['kmeans_labels'] = kmeans_labels
-        
-        print('computing  MAR')
 
+        # adata.obs['Clusters'] = kmeans_labels
+        print('computing  MAR')
+        
         scv_labels = adata.obs['Clusters']
 
         labels = scv_labels
@@ -148,6 +182,7 @@ def main():
         # model=LinearRegression().fit(pca_count_matrix, velocities)
         whole_data_label = -1
         label_set.add(whole_data_label) # -1 denote for whole dataset
+        
         for label in label_set:
             print('label:', label)
             if label == whole_data_label:
