@@ -65,7 +65,8 @@ def analyze_specific_cluster(adata, indices,
     try:
         scv.pl.velocity_embedding_stream(cluster_data,
                                          color=['neighbor_errors', 'vel_norms'],
-                                         save='cluster%s_vel_centroids.png' % str(cluster_label))
+                                         save='cluster%s_vel_centroids.png' % str(cluster_label),
+                                         figsize=(14, 10))
     except Exception as e:
         print('failed to generate velocity embedding stream')
         print(e)
@@ -73,7 +74,7 @@ def analyze_specific_cluster(adata, indices,
     jacob = model.coef_
     # selected_genes = ['FN1', 'SNAI2', 'ZEB2', 'TWIST1']
     selected_genes =['FN1', 'SNAI2', 'VIM','GEM']    
-    # todo : if PCA space, we need to transform coefficient to true Jacobian.
+    # if PCA space, we need to transform coefficient to true Jacobian.
     if pca_model:
         Q = pca_model.components_ # n components x n features
         jacob = Q.T @ jacob @ Q
@@ -114,8 +115,8 @@ def main():
     
     adata = adata[:, list(intersection_genes)]
 
-    # n_top_genes = 50 # not 2000 because of # observations
-    n_top_genes = 2000
+    n_top_genes = 50 # not 2000 because of # observations
+    # n_top_genes = 2000
     print('data read complete', flush=True)
     print('using %d top dispersed genes' % n_top_genes)
 
@@ -137,7 +138,6 @@ def main():
     adata = adata[is_EMT]
     
     # print('flag3')
-    
     count_matrix = adata.X.todense()[:, ...]
     print('count matrix nonzerorate:', np.count_nonzero(count_matrix) / np.prod(count_matrix.shape))
 
@@ -145,8 +145,7 @@ def main():
     scv.pp.moments(adata)
     scv.tl.velocity(adata)
     scv.tl.velocity_graph(adata)
-    velocities = adata.layers['velocity']
-    print('velocities matrix nonzero rate:', np.count_nonzero(velocities) / np.prod(velocities.shape))
+
     scv.tl.terminal_states(adata)
     root_cells = adata.obs['root_cells']
     end_cells = adata.obs['end_points']
@@ -162,6 +161,9 @@ def main():
     df.head().to_csv('rank_genes_vf.csv')
     
     count_matrix = adata.X.todense()[:, ...]
+    velocities = adata.layers['velocity']
+    print('velocities matrix nonzero rate:', np.count_nonzero(velocities) / np.prod(velocities.shape))
+
     def main_MAR(use_pca=True):
         '''
         MAR
@@ -174,6 +176,7 @@ def main():
             
         else:
             num_pc = n_top_genes
+            pca_model = None
             
 
         # knee = get_optimal_K(pca_count_matrix, kmin=1, kmax=21)
@@ -209,16 +212,19 @@ def main():
             print('#samples in this cluster:', np.sum(indices))
 
             # choose: PCA reduced by sklearn or reduced by packages?
-            label_count_matrix = pca_count_matrix[indices, ...]
-            # label_count_matrix = adata.X.todense()[indices, ...]
-    
-            label_velocities = pca_model.transform(velocities[indices, ...])
+            if use_pca:
+                label_count_matrix = pca_count_matrix[indices, ...]
+                label_velocities = pca_model.transform(velocities[indices, ...])
+            else:
+                label_count_matrix = adata.X.todense()[indices, ...]
+                label_velocities = velocities[indices, ...]
+
             
             model=LinearRegression().fit(label_count_matrix, label_velocities)
             predicted_velocities = model.predict(label_count_matrix)
             diff = predicted_velocities - label_velocities
             diff = np.sum(diff**2, axis=-1)
-            errors[indices] = diff            
+            errors[indices] = diff   
             analyze_specific_cluster(adata,
                                      indices,
                                      predicted_velocities,
@@ -244,7 +250,6 @@ def main():
                 adata.obs['cluster_squared_error'] = errors
                 
         scv.pl.scatter(adata, color=[ 'root_cells', 'end_points', 'cluster_squared_error', 'whole_data_squared_error', 'kmeans_labels', 'Clusters'], save='error_root_end_points.png')
-    
 
 
     def main_graphlasso():
@@ -260,7 +265,7 @@ def main():
         print('velocities shape:', velocities.shape)
         run_graphlasso(velocities * 100, prefix='velocity')
 
-    main_MAR()
+    main_MAR(use_pca=False)
     # main_graphlasso()
     
 if __name__ == '__main__':
