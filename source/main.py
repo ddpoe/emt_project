@@ -14,7 +14,8 @@ def run_graphlasso(X, lm=0.001, prefix=''):
 
 def analyze_specific_cluster(adata, indices,
                              predicted_velocities, errors,
-                             model, cluster_label, pca_model=None):
+                             model, cluster_label,
+                             pca_model=None, emt_genes=None):
     '''
     adata: annData obj
     indices: true or false indicating a sample belonging to a cluster or not
@@ -83,13 +84,13 @@ def analyze_specific_cluster(adata, indices,
     if pca_model:
         Q = pca_model.components_  # n components x n features
         jacob = Q.T @ jacob @ Q
-    analyze_jacobian(cluster_data, jacob, selected_genes)
+    analyze_jacobian(cluster_data, jacob, selected_genes, emt_genes)
 
 
-def analyze_jacobian(adata, jacob, selected_genes, topk=5):
+def analyze_jacobian(adata, jacob, selected_genes, emt_genes=None, topk=5):
     genes = adata.var_names
     # adata.var_names.get_loc('FN1')
-
+    emt_genes = set(emt_genes)
     for gene in selected_genes:
         if not (gene in genes):
             print(gene, 'is not in top gene list')
@@ -97,10 +98,15 @@ def analyze_jacobian(adata, jacob, selected_genes, topk=5):
         idx = adata.var_names.get_loc(gene)
         row_coef = jacob[idx, :]
         args = np.argsort(-np.abs(row_coef))
-        print('gene:', gene)
-        print('top inhib/exhibit genes:', genes[args[:topk]])
+        top_genes = genes[args[:topk]]
+        print('for gene:', gene)
+        print('top inhib/exhibit genes:', top_genes)
         print('top inhib/exhibit genes coefs:', row_coef[args[:topk]])
 
+        is_in_emt = [1 if gene in emt_genes else 0 for gene in top_genes ]
+        print('Whether top genes in gene list (1-yes, 0-no)', is_in_emt)
+        print('number of top5 genes in known emt list:', sum(is_in_emt))
+        
 
 def filter_a549_MET_samples(adata, meta):
     cell_ids = np.array(meta["Unnamed: 0"]) + 'x'
@@ -127,13 +133,13 @@ def main():
     loom_data_path = '../data/a549_tgfb1.loom'
     meta_path = '../data/a549_tgfb1_meta.csv'
     use_pancreas_data = False
-    # adata=dyn.read_loom(loom_data_path)
-    # adata = scv.read_loom(loom_data_path)
-    # meta = pd.read_csv(meta_path)
-    # adata = filter_a549_MET_samples(adata, meta)
+    adata=dyn.read_loom(loom_data_path)
+    adata = scv.read_loom(loom_data_path)
+    meta = pd.read_csv(meta_path)
+    adata = filter_a549_MET_samples(adata, meta)
     
-    adata = scv.datasets.pancreas()
-    use_pancreas_data = True
+    # adata = scv.datasets.pancreas()
+    # use_pancreas_data = True
 
     emt_gene_path = '../data/gene_lists/emt_genes_weikang.txt'
     emt_genes = read_list(emt_gene_path)
@@ -264,7 +270,8 @@ def main():
                                      diff,
                                      model,
                                      label,
-                                     pca_model)
+                                     pca_model,
+                                     emt_genes)
 
             r2_score = model.score(label_count_matrix, label_velocities)
             # explained_variance = sklearn.metrics\
