@@ -102,28 +102,7 @@ def analyze_jacobian(adata, jacob, selected_genes, topk=5):
         print('top inhib/exhibit genes coefs:', row_coef[args[:topk]])
 
 
-def main():
-    loom_data_path = '../data/a549_tgfb1.loom'
-    meta_path = '../data/a549_tgfb1_meta.csv'
-    # adata=dyn.read_loom(loom_data_path)
-    adata = scv.read_loom(loom_data_path)
-    meta = pd.read_csv(meta_path)
-    # adata = scv.datasets.pancreas()
-    emt_gene_path = '../data/gene_lists/emt_genes_weikang.txt'
-    emt_genes = read_list(emt_gene_path)
-
-    # filter by emt genes
-    print('filtering genes by only using known emt genes')
-    intersection_genes = set(adata.var_names).intersection(emt_genes)
-    # print('intersection genes:', intersection_genes)
-
-    adata = adata[:, list(intersection_genes)]
-
-    n_top_genes = 50  # not 2000 because of # observations
-    # n_top_genes = 2000
-    print('data read complete', flush=True)
-    print('using %d top dispersed genes' % n_top_genes)
-
+def filter_a549_MET_samples(adata, meta):
     cell_ids = np.array(meta["Unnamed: 0"]) + 'x'
     for ID in range(len(cell_ids)):
         # This is needed to make the cell ids have the same syntax as the loom
@@ -142,6 +121,36 @@ def main():
     # no _rm in time means EMT
     is_EMT = np.array([time.find('_rm') == -1 for time in time_raw])
     adata = adata[is_EMT]
+    return adata
+    
+def main():
+    loom_data_path = '../data/a549_tgfb1.loom'
+    meta_path = '../data/a549_tgfb1_meta.csv'
+    use_pancreas_data = False
+    # adata=dyn.read_loom(loom_data_path)
+    # adata = scv.read_loom(loom_data_path)
+    # meta = pd.read_csv(meta_path)
+    # adata = filter_a549_MET_samples(adata, meta)
+    
+    adata = scv.datasets.pancreas()
+    use_pancreas_data = True
+
+    emt_gene_path = '../data/gene_lists/emt_genes_weikang.txt'
+    emt_genes = read_list(emt_gene_path)
+
+    '''
+    filter by emt genes?
+    '''
+    # print('filtering genes by only using known emt genes')
+    # intersection_genes = set(adata.var_names).intersection(emt_genes)
+    # adata = adata[:, list(intersection_genes)]
+    
+    # print('intersection genes:', intersection_genes)
+
+    # n_top_genes = 50  # not 2000 because of # observations
+    n_top_genes = 2000
+    print('data read complete', flush=True)
+    print('using %d top dispersed genes' % n_top_genes)
 
     # print('flag3')
     count_matrix = adata.X.todense()[:, ...]
@@ -162,7 +171,11 @@ def main():
     scv.pl.velocity_embedding_stream(adata, save='vel_stream.png')
 
     # gen ranked genes
-    scv.tl.rank_velocity_genes(adata, groupby='Clusters')
+    if use_pancreas_data:
+        # due to package issue, somehow pancreas dataset has clusters not capitalized
+        scv.tl.rank_velocity_genes(adata, groupby='clusters')
+    else:
+        scv.tl.rank_velocity_genes(adata, groupby='Clusters')
     df = scv.DataFrame(adata.uns['rank_velocity_genes']['names'])
     df.head().to_csv('rank_genes_vf.csv')
 
@@ -174,11 +187,12 @@ def main():
         np.prod(
             velocities.shape))
 
-    def main_MAR(use_pca=True):
+    def main_MAR(only_whole_data=False, use_pca=True):
         '''
         MAR
         '''
         if use_pca:
+            print('applying PCA model to gene space')
             num_pc = 100
             pca_model = PCA(
                 n_components=num_pc,
@@ -216,6 +230,10 @@ def main():
         label_set.add(whole_data_label)  # -1 denote for whole dataset
 
         for label in label_set:
+            # skip if using only whole dataset
+            if only_whole_data and label != whole_data_label:
+                continue
+            
             print('label:', label)
             if label == whole_data_label:
                 indices = np.full(len(labels), True)
@@ -261,17 +279,18 @@ def main():
                 pass
             else:
                 adata.obs['cluster_squared_error'] = errors
-
-        scv.pl.scatter(
-            adata,
-            color=[
-                'root_cells',
-                'end_points',
-                'cluster_squared_error',
-                'whole_data_squared_error',
-                'kmeans_labels',
-                'Clusters'],
-            save='error_root_end_points.png')
+                
+        if not only_whole_data:
+            scv.pl.scatter(
+                adata,
+                color=[
+                    'root_cells',
+                    'end_points',
+                    'cluster_squared_error',
+                    'whole_data_squared_error',
+                    'kmeans_labels',
+                    'Clusters'],
+                save='error_root_end_points.png')
 
     def main_graphlasso():
         '''
@@ -286,7 +305,7 @@ def main():
         print('velocities shape:', velocities.shape)
         run_graphlasso(velocities * 100, prefix='velocity')
 
-    main_MAR(use_pca=False)
+    main_MAR(only_whole_data=False, use_pca=True)
     # main_graphlasso()
 
 
