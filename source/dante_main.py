@@ -88,6 +88,10 @@ def analyze_jacobian(adata, jacob, selected_genes, topk=5):
     # adata.var_names.get_loc('FN1')
 
     for gene in selected_genes:
+        if not (gene in genes):
+            print(gene, 'is not in top gene list')
+            continue
+        
         idx = adata.var_names.get_loc(gene)
         
         row = jacob[idx, :]
@@ -163,8 +167,8 @@ def main():
         pca_count_matrix_model=PCA(n_components=pca_components,random_state=7).fit(count_matrix)
         pca_count_matrix=pca_count_matrix_model.transform(count_matrix)
 
-        pca_velocity_model=PCA(n_components=pca_components,random_state=7).fit(velocities)
-        pca_velocities=pca_velocity_model.transform(velocities)
+        # pca_velocity_model=PCA(n_components=pca_components,random_state=7).fit(velocities)
+        pca_velocities=pca_count_matrix_model.transform(velocities)
 
         print('pca_count_matrix',pca_count_matrix.shape)
 
@@ -204,11 +208,12 @@ def main():
     
             label_velocities = pca_velocities[indices, ...]
 
-            count_matrix_train,count_matrix_test,velocities_train,velocities_test=train_test_split(
+            count_matrix_train,count_matrix_test,velocities_train,velocities_test=sklearn.model_selection.train_test_split(
                     label_count_matrix,label_velocities,test_size=0.10,random_state=0
                     )
 
             model=LinearRegression().fit(count_matrix_train,velocities_train)
+            # predicted_velocities = model.predict(count_matrix_test)
             predicted_velocities = model.predict(count_matrix_test)
 
             diff = predicted_velocities - velocities_test
@@ -224,7 +229,7 @@ def main():
             #                             .explained_variance_score(label_velocities,
             #                                                       predicted_velocities)
             mse = sklearn.metrics\
-                         .mean_squared_error(label_velocities,
+                         .mean_squared_error(velocities_test,
                                              predicted_velocities)
             print('label:%d, r^2 score: %.5f, mse:%.5f'\
                   % (label, r2_score, mse))

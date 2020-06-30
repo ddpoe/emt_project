@@ -22,6 +22,7 @@ import scipy
 import scipy.sparse.linalg
 import numpy.linalg
 import sklearn.metrics
+import sklearn.model_selection
 
 def get_optimal_K(X, kmin=1, kmax=21):
     distortions = [] 

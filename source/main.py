@@ -14,7 +14,7 @@ def run_graphlasso(X, lm=0.001, prefix=''):
 
 def analyze_specific_cluster(adata, indices,
                              predicted_velocities, errors,
-                             model, cluster_label):
+                             model, cluster_label, pca_model=None):
     '''
     adata: annData obj
     indices: true or false indicating a sample belonging to a cluster or not
@@ -71,9 +71,12 @@ def analyze_specific_cluster(adata, indices,
         print(e)
         
     jacob = model.coef_
-    selected_genes = ['FN1', 'SNAI2', 'ZEB2', 'TWIST1']
-
+    # selected_genes = ['FN1', 'SNAI2', 'ZEB2', 'TWIST1']
+    selected_genes =['FN1', 'SNAI2', 'VIM','GEM']    
     # todo : if PCA space, we need to transform coefficient to true Jacobian.
+    if pca_model:
+        Q = pca_model.components_ # n components x n features
+        jacob = Q.T @ jacob @ Q
     analyze_jacobian(cluster_data, jacob, selected_genes)
 
     
@@ -107,20 +110,22 @@ def main():
     # filter by emt genes
     print('filtering genes by only using known emt genes')
     intersection_genes = set(adata.var_names).intersection(emt_genes)
-    print('intersection genes:', intersection_genes)
+    # print('intersection genes:', intersection_genes)
     
     adata = adata[:, list(intersection_genes)]
-    
-    n_top_genes = 50 # not 2000 because of # observations
-    print('data read complete', flush=True)
 
-    CellIDs=np.array(meta["Unnamed: 0"])+'x'
-    for ID in range(len(CellIDs)):
+    # n_top_genes = 50 # not 2000 because of # observations
+    n_top_genes = 2000
+    print('data read complete', flush=True)
+    print('using %d top dispersed genes' % n_top_genes)
+
+    cell_ids=np.array(meta["Unnamed: 0"])+'x'
+    for ID in range(len(cell_ids)):
         #This is needed to make the cell ids have the same syntax as the loom files 
-        CellIDs[ID]=re.sub('x',"x-",CellIDs[ID],count=1)
-        CellIDs[ID]=re.sub('_',":",CellIDs[ID])
+        cell_ids[ID]=re.sub('x',"x-",cell_ids[ID],count=1)
+        cell_ids[ID]=re.sub('_',":",cell_ids[ID])
     
-    meta['Unnamed: 0']=CellIDs
+    meta['Unnamed: 0']=cell_ids
     cells = meta['Unnamed: 0'].to_numpy()
     # time_raw = [meta['Time'][cells==cell][cell] for cell in adata.obs_names]
     time_raw = np.array([[meta['Time'][np.squeeze(np.argwhere(cells==cell))]][0] for cell in adata.obs_names])
@@ -130,8 +135,7 @@ def main():
     # no _rm in time means EMT
     is_EMT = np.array([time.find('_rm')==-1 for time in time_raw])
     adata = adata[is_EMT]
-    treatment = meta['Treatment']
-    adata.obs['treatment']=treatment
+    
     # print('flag3')
     
     count_matrix = adata.X.todense()[:, ...]
@@ -156,22 +160,34 @@ def main():
     scv.tl.rank_velocity_genes(adata, groupby='Clusters')
     df = scv.DataFrame(adata.uns['rank_velocity_genes']['names'])
     df.head().to_csv('rank_genes_vf.csv')
-
-    def main_MAR():
+    
+    count_matrix = adata.X.todense()[:, ...]
+    def main_MAR(use_pca=True):
         '''
         MAR
         '''
-        pca=PCA(n_components=n_top_genes,random_state=7).fit(count_matrix)
-        pca_count_matrix=pca.transform(count_matrix)
+        if use_pca:
+            num_pc = 100
+            pca_model = PCA(n_components=num_pc, random_state=7).fit(count_matrix)
+            # pca=PCA(n_components=n_top_genes, random_state=7).fit(count_matrix)
+            pca_count_matrix = pca_model.transform(count_matrix)
+            
+        else:
+            num_pc = n_top_genes
+            
+
         # knee = get_optimal_K(pca_count_matrix, kmin=1, kmax=21)
-        knee = 7 # calculated
+        knee = 10 # calculated
         print('knee of kmeans graph:', knee)
-        kmeans = KMeans(n_clusters=knee ,random_state=0).fit(pca_count_matrix)
+        if use_pca:
+            kmeans = KMeans(n_clusters=knee ,random_state=0).fit(pca_count_matrix)
+        else:
+            kmeans = KMeans(n_clusters=knee ,random_state=0).fit(count_matrix)
         cluster_centers=kmeans.cluster_centers_
         kmeans_labels=kmeans.labels_
         adata.obs['kmeans_labels'] = kmeans_labels
 
-        # adata.obs['Clusters'] = kmeans_labels
+        adata.obs['Clusters'] = kmeans_labels
         print('computing  MAR')
         
         scv_labels = adata.obs['Clusters']
@@ -193,17 +209,23 @@ def main():
             print('#samples in this cluster:', np.sum(indices))
 
             # choose: PCA reduced by sklearn or reduced by packages?
-            # label_count_matrix = pca_count_matrix[indices, ...]
-            label_count_matrix = adata.X.todense()[indices, ...]
+            label_count_matrix = pca_count_matrix[indices, ...]
+            # label_count_matrix = adata.X.todense()[indices, ...]
     
-            label_velocities = velocities[indices, ...]
+            label_velocities = pca_model.transform(velocities[indices, ...])
             
             model=LinearRegression().fit(label_count_matrix, label_velocities)
             predicted_velocities = model.predict(label_count_matrix)
             diff = predicted_velocities - label_velocities
             diff = np.sum(diff**2, axis=-1)
             errors[indices] = diff            
-            analyze_specific_cluster(adata, indices, predicted_velocities, diff, model, label)
+            analyze_specific_cluster(adata,
+                                     indices,
+                                     predicted_velocities,
+                                     diff,
+                                     model,
+                                     label,
+                                     pca_model)
 
             r2_score = model.score(label_count_matrix, label_velocities)
             # explained_variance = sklearn.metrics\
