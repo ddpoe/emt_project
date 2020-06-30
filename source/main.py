@@ -170,15 +170,6 @@ def main():
     # gen figures
     scv.pl.velocity_embedding_stream(adata, save='vel_stream.png')
 
-    # gen ranked genes
-    if use_pancreas_data:
-        # due to package issue, somehow pancreas dataset has clusters not capitalized
-        scv.tl.rank_velocity_genes(adata, groupby='clusters')
-    else:
-        scv.tl.rank_velocity_genes(adata, groupby='Clusters')
-    df = scv.DataFrame(adata.uns['rank_velocity_genes']['names'])
-    df.head().to_csv('rank_genes_vf.csv')
-
     count_matrix = adata.X.todense()[:, ...]
     velocities = adata.layers['velocity']
     print(
@@ -220,8 +211,19 @@ def main():
         adata.obs['Clusters'] = kmeans_labels
         print('computing  MAR')
 
-        scv_labels = adata.obs['Clusters']
+        '''
+        gen ranked genes
+        '''
+        if use_pancreas_data:
+            # due to package issue, somehow pancreas dataset has clusters not capitalized
+            scv.tl.rank_velocity_genes(adata, groupby='clusters')
+        else:
+            scv.tl.rank_velocity_genes(adata, groupby='Clusters')
+        df = scv.DataFrame(adata.uns['rank_velocity_genes']['names'])
+        df.head().to_csv('rank_genes_vf.csv')
 
+        
+        scv_labels = adata.obs['Clusters']
         labels = scv_labels
         label_set = set(labels)
         errors = np.zeros(len(labels))
@@ -288,10 +290,19 @@ def main():
                     'end_points',
                     'cluster_squared_error',
                     'whole_data_squared_error',
-                    'kmeans_labels',
+                    'Clusters'],
+                save='error_root_end_points.png')
+        else:
+            scv.pl.scatter(
+                adata,
+                color=[
+                    'root_cells',
+                    'end_points',
+                    'whole_data_squared_error',
                     'Clusters'],
                 save='error_root_end_points.png')
 
+            
     def main_graphlasso():
         '''
         graph lasso
@@ -305,7 +316,7 @@ def main():
         print('velocities shape:', velocities.shape)
         run_graphlasso(velocities * 100, prefix='velocity')
 
-    main_MAR(only_whole_data=False, use_pca=True)
+    main_MAR(only_whole_data=True, use_pca=True)
     # main_graphlasso()
 
 
