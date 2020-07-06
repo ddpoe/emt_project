@@ -1,4 +1,4 @@
-only_whole_data = True
+only_whole_data = False
 use_pca = True
 use_emt_gene_filter = False
 day0_only = True

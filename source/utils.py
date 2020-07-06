@@ -76,15 +76,15 @@ def make_dir(path, abort=True):
 def gen_two_gene_graph(adata, g1, g2, save_dir):
     print([g1, g2])
     sub_data = adata[:, [g1, g2]]
-    # scv.pp.filter_and_normalize(sub_data)
-    # scv.pp.moments(sub_data)
-    # scv.tl.velocity(sub_data)
-    # scv.tl.velocity_graph(sub_data)
+    print(sub_data.var_names)
+    scv.pp.filter_and_normalize(sub_data)
+    scv.pp.moments(sub_data)
+    scv.tl.velocity(sub_data, var_names=[g1, g2])
+    scv.tl.velocity_graph(sub_data)
     filename = g1 + '_' + g2 + '_vel_stream.png'
     path = os.path.join(save_dir,
                         filename)
     scv.pl.velocity_embedding_stream(sub_data, show=False, save=filename)
-    
     
 
 def gen_all_gene_pair_vector_field(adata, gene_list, save_dir=config.two_gene_graph_dir):

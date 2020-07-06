@@ -20,7 +20,7 @@ def main():
     adata = scv.read_loom(loom_data_path) # adata=dyn.read_loom(loom_data_path)
     meta = pd.read_csv(meta_path)
     adata = filter_a549_MET_samples(adata, meta, day0_only=config.day0_only)
-
+    # gen_all_gene_pair_vector_field(adata, config.selected_genes_jacobian)
     # adata = scv.datasets.pancreas()
     # use_pancreas_data = True
 
@@ -59,8 +59,6 @@ def main():
 
     # gen figures
     scv.pl.velocity_embedding_stream(adata, save='vel_stream.png')
-    # gen_all_gene_pair_vector_field(adata, config.selected_genes_jacobian)
-
     
     count_matrix = adata.X.todense()[:, ...]
     velocities = adata.layers['velocity']
@@ -88,7 +86,8 @@ def main():
             pca_model = None
 
         # knee = get_optimal_K(pca_count_matrix, kmin=1, kmax=21)
-        knee = 10  # calculated
+        # knee = get_optimal_K(count_matrix, kmin=1, kmax=21)
+        knee = 4  # calculated
         print('knee of kmeans graph:', knee)
         if use_pca:
             kmeans = KMeans(
@@ -141,13 +140,13 @@ def main():
 
             # choose: PCA reduced by sklearn or reduced by packages?
             if use_pca:
-                num_pc = 100
+                num_pc = max(4, int(np.sum(indices)/10))
                 raw_cluster_count_matrix = count_matrix[indices, ...]
                 pca_model = PCA(
                     n_components=num_pc,
                     random_state=7).fit(raw_cluster_count_matrix)
                 pca_count_matrix = pca_model.transform(raw_cluster_count_matrix)                
-                label_count_matrix = pca_count_matrix[indices, ...]
+                label_count_matrix = pca_count_matrix
                 label_velocities = pca_model.transform(
                     velocities[indices, ...])
             else:
