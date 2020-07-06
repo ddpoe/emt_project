@@ -48,6 +48,9 @@ def analyze_specific_cluster(adata, indices,
             dist[i, j] = diff
             dist[j, i] = diff
 
+    '''
+    calculate neighbor MSE sum
+    '''
     num_neighbors = 10
     neighbor_errors = []
     for i in range(N):
@@ -107,7 +110,7 @@ def analyze_jacobian(adata, jacob, selected_genes, emt_genes=None, topk=5):
         print('number of top5 genes in known emt list:', sum(is_in_emt))
         
 
-def filter_a549_MET_samples(adata, meta, day0_only=True):
+def filter_a549_MET_samples(adata, meta, day0_only=config.day0_only):
     cell_ids = np.array(meta["Unnamed: 0"]) + 'x'
     for ID in range(len(cell_ids)):
         # This is needed to make the cell ids have the same syntax as the loom
@@ -151,11 +154,12 @@ def main():
     '''
     filter by emt genes?
     '''
-    # print('filtering genes by only using known emt genes')
-    # intersection_genes = set(adata.var_names).intersection(emt_genes)
-    # adata = adata[:, list(intersection_genes)]
-    
-    # print('intersection genes:', intersection_genes)
+    if config.use_emt_gene_filter:
+        print('filtering genes by only using known emt genes')
+        intersection_genes = set(adata.var_names).intersection(emt_genes)
+        adata = adata[:, list(intersection_genes)]
+
+        print('intersection genes:', intersection_genes)
 
     # n_top_genes = 50  # not 2000 because of # observations
     n_top_genes = 2000

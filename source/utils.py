@@ -53,3 +53,4 @@ def read_list(path):
         for line in f:
             data.append(line.replace('\n', ''))
         return data
+
