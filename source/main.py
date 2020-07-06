@@ -1,5 +1,5 @@
 from utils import *
-
+import config
 
 def run_graphlasso(X, lm=0.001, prefix=''):
     model = sklearn.covariance.GraphicalLasso(alpha=lm)
@@ -15,7 +15,8 @@ def run_graphlasso(X, lm=0.001, prefix=''):
 def analyze_specific_cluster(adata, indices,
                              predicted_velocities, errors,
                              model, cluster_label,
-                             pca_model=None, emt_genes=None):
+                             pca_model=None, emt_genes=None,
+                             selected_genes=config.selected_genes_jacobian):
     '''
     adata: annData obj
     indices: true or false indicating a sample belonging to a cluster or not
@@ -41,7 +42,7 @@ def analyze_specific_cluster(adata, indices,
     for i in range(len(cluster_data)):
         for j in range(i + 1, len(cluster_data)):
             diff = cluster_data.layers['velocity'][i] \
-                - cluster_data.layers['velocity'][j]
+                   - cluster_data.layers['velocity'][j]
             diff = numpy.linalg.norm(diff)
             # diff = scipy.sparse.linalg.norm(diff)
             dist[i, j] = diff
@@ -61,7 +62,6 @@ def analyze_specific_cluster(adata, indices,
                    save='cluster%s_centroids.png' % str(cluster_label))
 
     # sometimes fail because of lack of samples
-
     try:
         scv.pl.velocity_embedding_stream(
             cluster_data,
@@ -79,7 +79,6 @@ def analyze_specific_cluster(adata, indices,
 
     jacob = model.coef_
     # selected_genes = ['FN1', 'SNAI2', 'ZEB2', 'TWIST1']
-    selected_genes = ['FN1', 'SNAI2', 'VIM', 'GEM']
     # if PCA space, we need to transform coefficient to true Jacobian.
     if pca_model:
         Q = pca_model.components_  # n components x n features
@@ -108,7 +107,7 @@ def analyze_jacobian(adata, jacob, selected_genes, emt_genes=None, topk=5):
         print('number of top5 genes in known emt list:', sum(is_in_emt))
         
 
-def filter_a549_MET_samples(adata, meta):
+def filter_a549_MET_samples(adata, meta, day0_only=True):
     cell_ids = np.array(meta["Unnamed: 0"]) + 'x'
     for ID in range(len(cell_ids)):
         # This is needed to make the cell ids have the same syntax as the loom
@@ -125,10 +124,15 @@ def filter_a549_MET_samples(adata, meta):
 
     time_raw = adata.obs['Time']
     # no _rm in time means EMT
-    is_EMT = np.array([time.find('_rm') == -1 for time in time_raw])
-    adata = adata[is_EMT]
+    if day0_only:
+        is_day0 = np.array([time == '0d' for time in time_raw])
+        adata = adata[is_day0]
+    else:
+        is_EMT = np.array([time.find('_rm') == -1 for time in time_raw])
+        adata = adata[is_EMT]
     return adata
-    
+
+
 def main():
     loom_data_path = '../data/a549_tgfb1.loom'
     meta_path = '../data/a549_tgfb1_meta.csv'
@@ -136,7 +140,7 @@ def main():
     adata=dyn.read_loom(loom_data_path)
     adata = scv.read_loom(loom_data_path)
     meta = pd.read_csv(meta_path)
-    adata = filter_a549_MET_samples(adata, meta)
+    adata = filter_a549_MET_samples(adata, meta, day0_only=config.day0_only)
     
     # adata = scv.datasets.pancreas()
     # use_pancreas_data = True
@@ -207,7 +211,7 @@ def main():
         if use_pca:
             kmeans = KMeans(
                 n_clusters=knee,
-                random_state=0).fit(pca_count_matrix)
+                random_state=0).fit(count_matrix)
         else:
             kmeans = KMeans(n_clusters=knee, random_state=0).fit(count_matrix)
         cluster_centers = kmeans.cluster_centers_
@@ -226,9 +230,12 @@ def main():
         else:
             scv.tl.rank_velocity_genes(adata, groupby='Clusters')
         df = scv.DataFrame(adata.uns['rank_velocity_genes']['names'])
-        df.head().to_csv('rank_genes_vf.csv')
+        df.head().to_csv('./figures/rank_genes_vf.csv')
 
-        
+        '''
+        analyze each cluster
+        '''
+        # scv_labels is kmeans label set earlier
         scv_labels = adata.obs['Clusters']
         labels = scv_labels
         label_set = set(labels)
@@ -252,6 +259,12 @@ def main():
 
             # choose: PCA reduced by sklearn or reduced by packages?
             if use_pca:
+                num_pc = 100
+                raw_cluster_count_matrix = count_matrix[indices, ...]
+                pca_model = PCA(
+                    n_components=num_pc,
+                    random_state=7).fit(raw_cluster_count_matrix)
+                pca_count_matrix = pca_model.transform(raw_cluster_count_matrix)                
                 label_count_matrix = pca_count_matrix[indices, ...]
                 label_velocities = pca_model.transform(
                     velocities[indices, ...])
@@ -323,7 +336,7 @@ def main():
         print('velocities shape:', velocities.shape)
         run_graphlasso(velocities * 100, prefix='velocity')
 
-    main_MAR(only_whole_data=True, use_pca=True)
+    main_MAR(only_whole_data=config.only_whole_data, use_pca=config.use_pca)
     # main_graphlasso()
 
 
