@@ -67,24 +67,32 @@ def main():
         np.count_nonzero(velocities) /
         np.prod(
             velocities.shape))
-
+    
     def main_MAR(only_whole_data=False, use_pca=True):
         '''
-        MAR
+        MAR main interface
         '''
-        if use_pca:
-            print('applying PCA model to gene space')
-            num_pc = 100
-            pca_model = PCA(
-                n_components=num_pc,
-                random_state=7).fit(count_matrix)
-            # pca=PCA(n_components=n_top_genes, random_state=7).fit(count_matrix)
-            pca_count_matrix = pca_model.transform(count_matrix)
 
-        else:
-            num_pc = n_top_genes
-            pca_model = None
+        '''
+        do whole pca once
+        '''
+        # if use_pca:
+        #     print('applying PCA model to gene space')
+        #     num_pc = 100
+        #     pca_model = PCA(
+        #         n_components=num_pc,
+        #         random_state=7).fit(count_matrix)
+        #     # pca=PCA(n_components=n_top_genes, random_state=7).fit(count_matrix)
+        #     pca_count_matrix = pca_model.transform(count_matrix)
 
+        # else:
+        #     num_pc = n_top_genes
+        #     pca_model = None
+
+
+        '''
+        determine clusters
+        '''
         # knee = get_optimal_K(pca_count_matrix, kmin=1, kmax=21)
         # knee = get_optimal_K(count_matrix, kmin=1, kmax=21)
         knee = 4  # calculated
@@ -98,9 +106,13 @@ def main():
         cluster_centers = kmeans.cluster_centers_
         kmeans_labels = kmeans.labels_
         adata.obs['kmeans_labels'] = kmeans_labels
-
         adata.obs['Clusters'] = kmeans_labels
         print('computing  MAR')
+        # scv_labels is kmeans label set earlier
+        scv_labels = adata.obs['Clusters']
+        labels = scv_labels
+        label_set = set(labels)
+        errors = np.zeros(len(labels))        
 
         '''
         gen ranked genes
@@ -113,18 +125,21 @@ def main():
         df = scv.DataFrame(adata.uns['rank_velocity_genes']['names'])
         df.head().to_csv('./figures/rank_genes_vf.csv')
 
+
+        '''
+        set AnnData Obj layer/obs
+        '''
+        adata.obs['clusters_neighbor_MAR_mse'] = np.zeros(len(adata))
+        adata.obs['clusters_neighbor_MAR_r2'] = np.zeros(len(adata))
+        adata.obs['whole_neighbor_MAR_mse'] = np.zeros(len(adata))
+        adata.obs['whole_neighbor_MAR_r2'] = np.zeros(len(adata))        
+        adata.obs['vel_norms'] = numpy.linalg.norm(adata.layers['velocity'], axis=1)
         '''
         analyze each cluster
         '''
-        # scv_labels is kmeans label set earlier
-        scv_labels = adata.obs['Clusters']
-        labels = scv_labels
-        label_set = set(labels)
-        errors = np.zeros(len(labels))
         # model=LinearRegression().fit(pca_count_matrix, velocities)
         whole_data_label = -1
         label_set.add(whole_data_label)  # -1 denote for whole dataset
-
         for label in label_set:
             # skip if using only whole dataset
             if only_whole_data and label != whole_data_label:
@@ -141,10 +156,16 @@ def main():
             # choose: PCA reduced by sklearn or reduced by packages?
             if use_pca:
                 num_pc = max(4, int(np.sum(indices)/10))
+                print('using %d principle components' % num_pc)
                 raw_cluster_count_matrix = count_matrix[indices, ...]
                 pca_model = PCA(
                     n_components=num_pc,
                     random_state=7).fit(raw_cluster_count_matrix)
+
+                ratio = sum(pca_model.explained_variance_ratio_)
+                print('pca explained variance ratio:', ratio)
+
+                
                 pca_count_matrix = pca_model.transform(raw_cluster_count_matrix)                
                 label_count_matrix = pca_count_matrix
                 label_velocities = pca_model.transform(
@@ -153,6 +174,23 @@ def main():
                 label_count_matrix = adata.X.todense()[indices, ...]
                 label_velocities = velocities[indices, ...]
 
+
+            '''
+            Neighbor MAR part
+            '''
+            mses, r2s = neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num)
+
+            # dont let whole data cluster overwrites everything
+            if label != whole_data_label:
+                adata.obs['clusters_neighbor_MAR_mse'][indices] = mses
+                adata.obs['clusters_neighbor_MAR_r2'][indices] = r2s
+            else:
+                adata.obs['whole_neighbor_MAR_mse'][indices] = mses
+                adata.obs['whole_neighbor_MAR_r2'][indices] = r2s
+                
+            '''
+            whole cluster MAR
+            '''
             model = LinearRegression().fit(label_count_matrix, label_velocities)
             predicted_velocities = model.predict(label_count_matrix)
             diff = predicted_velocities - label_velocities
@@ -193,6 +231,18 @@ def main():
                     'whole_data_squared_error',
                     'Clusters'],
                 save='error_root_end_points.png')
+            scv.pl.scatter(
+                adata,
+                color=[
+                    'whole_neighbor_MAR_r2',
+                    'whole_neighbor_MAR_mse',                    
+                    'whole_data_squared_error',
+                    'clusters_neighbor_MAR_r2',
+                    'clusters_neighbor_MAR_mse',
+                    'Clusters',
+                    'vel_norms'],
+                save='neighbor_MAR_stats.png')            
+
         else:
             scv.pl.scatter(
                 adata,
@@ -203,6 +253,15 @@ def main():
                     'Clusters'],
                 save='error_root_end_points.png')
 
+            scv.pl.scatter(
+                adata,
+                color=[
+                    'whole_neighbor_MAR_r2',
+                    'whole_neighbor_MAR_mse',
+                    'whole_data_squared_error',
+                    'Clusters',
+                    'vel_norms'],
+                save='neighbor_MAR_stats.png')            
             
     def main_graphlasso():
         '''

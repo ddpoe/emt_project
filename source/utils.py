@@ -25,6 +25,14 @@ import sklearn.metrics
 import sklearn.model_selection
 import config
 import os
+import scipy.spatial.distance
+
+def calc_distance_matrix(data):
+    dist_mat = scipy.spatial.distance.pdist(data, metric='euclidean')
+    dist_mat = scipy.spatial.distance.squareform(dist_mat)
+    return dist_mat
+
+        
 
 def get_optimal_K(X, kmin=1, kmax=21):
     distortions = []
@@ -121,19 +129,20 @@ def analyze_specific_cluster(adata, indices,
         vel_norm = numpy.linalg.norm(cluster_data.layers['velocity'][i])
         vel_norms.append(vel_norm)
     cluster_data.obs['vel_norms'] = vel_norms
-
+    
     # use MSE and distance to define centroids
     N = len(cluster_data)
-    dist = np.zeros((N, N))
-    for i in range(len(cluster_data)):
-        for j in range(i + 1, len(cluster_data)):
-            diff = cluster_data.layers['velocity'][i] \
-                   - cluster_data.layers['velocity'][j]
-            diff = numpy.linalg.norm(diff)
-            # diff = scipy.sparse.linalg.norm(diff)
-            dist[i, j] = diff
-            dist[j, i] = diff
-
+    # dist = np.zeros((N, N))
+    # for i in range(len(cluster_data)):
+    #     for j in range(i + 1, len(cluster_data)):
+    #         diff = cluster_data.layers['velocity'][i] \
+    #                - cluster_data.layers['velocity'][j]
+    #         diff = numpy.linalg.norm(diff)
+    #         # diff = scipy.sparse.linalg.norm(diff)
+    #         dist[i, j] = diff
+    #         dist[j, i] = diff
+    dist = calc_distance_matrix(cluster_data.layers['velocity'])
+    
     '''
     calculate neighbor MSE sum
     '''
@@ -144,10 +153,10 @@ def analyze_specific_cluster(adata, indices,
         total_error = np.sum(errors[argsorted[:num_neighbors]])
         neighbor_errors.append(total_error)
 
-    cluster_data.obs['neighbor_errors'] = neighbor_errors
+    cluster_data.obs['whole_cluster_neighbor_errors'] = neighbor_errors
     suptitle = 'cluster:' + str(cluster_label)
     scv.pl.scatter(cluster_data,
-                   color=['neighbor_errors', 'vel_norms'],
+                   color=['whole_cluster_neighbor_errors', 'vel_norms'],
                    save='cluster%s_centroids.png' % str(cluster_label))
 
     # sometimes fail because of lack of samples
@@ -162,6 +171,7 @@ def analyze_specific_cluster(adata, indices,
             figsize=(
                 14,
                 10))
+        pass
     except Exception as e:
         print('failed to generate velocity embedding stream')
         print(e)
@@ -220,3 +230,29 @@ def filter_a549_MET_samples(adata, meta, day0_only=config.day0_only):
         is_EMT = np.array([time.find('_rm') == -1 for time in time_raw])
         adata = adata[is_EMT]
     return adata
+
+    
+
+def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None):
+    if dist_mat is None:
+        dist_mat = calc_distance_matrix(data_mat)
+        
+    mses, r2s = [], []
+    print('dist shape:',  dist_mat.shape)
+    for i in range(len(data_mat)):
+        neighbors = np.argsort(dist_mat[i,:])[:neighbor_num]
+        
+        specific_mat = data_mat[neighbors, :]
+        neighbor_labels = labels[neighbors, :]
+        model = LinearRegression().fit(specific_mat, neighbor_labels)
+        predicted_vals = model.predict(specific_mat)
+
+        r2_score = model.score(specific_mat, neighbor_labels)
+        mse = sklearn.metrics\
+                     .mean_squared_error(neighbor_labels,
+                                         predicted_vals)
+        # print('center:%d, r^2 score: %.5f, mse:%.5f' % (i, r2_score, mse))
+        mses.append(mse)
+        r2s.append(r2_score)
+
+    return mses, r2s
