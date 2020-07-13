@@ -155,7 +155,7 @@ def main():
 
             # choose: PCA reduced by sklearn or reduced by packages?
             if use_pca:
-                num_pc = max(4, int(np.sum(indices)/10))
+                num_pc = max(1, int(np.sum(indices)/10))
                 print('using %d principle components' % num_pc)
                 raw_cluster_count_matrix = count_matrix[indices, ...]
                 pca_model = PCA(

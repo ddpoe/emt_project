@@ -236,7 +236,9 @@ def filter_a549_MET_samples(adata, meta, day0_only=config.day0_only):
 def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None):
     if dist_mat is None:
         dist_mat = calc_distance_matrix(data_mat)
-        
+
+    feature_num = neighbor_num // 10
+    data_mat = data_mat[:, :feature_num]
     mses, r2s = [], []
     print('dist shape:',  dist_mat.shape)
     for i in range(len(data_mat)):
@@ -254,5 +256,4 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None):
         # print('center:%d, r^2 score: %.5f, mse:%.5f' % (i, r2_score, mse))
         mses.append(mse)
         r2s.append(r2_score)
-
     return mses, r2s
