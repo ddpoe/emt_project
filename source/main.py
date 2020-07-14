@@ -132,7 +132,9 @@ def main():
         adata.obs['clusters_neighbor_MAR_mse'] = np.zeros(len(adata))
         adata.obs['clusters_neighbor_MAR_r2'] = np.zeros(len(adata))
         adata.obs['whole_neighbor_MAR_mse'] = np.zeros(len(adata))
-        adata.obs['whole_neighbor_MAR_r2'] = np.zeros(len(adata))        
+        adata.obs['whole_neighbor_MAR_r2'] = np.zeros(len(adata))
+        adata.obs['clusters_centroid_neighborhood_sample_mses'] = np.full(len(adata), -1)
+        adata.obs['is_centroid_neighbor_indicator'] = np.zeros(len(adata), dtype=np.int)
         adata.obs['vel_norms'] = numpy.linalg.norm(adata.layers['velocity'], axis=1)
         '''
         analyze each cluster
@@ -140,6 +142,9 @@ def main():
         # model=LinearRegression().fit(pca_count_matrix, velocities)
         whole_data_label = -1
         label_set.add(whole_data_label)  # -1 denote for whole dataset
+        raw_labels = labels
+        labels = raw_labels.values
+        
         for label in label_set:
             # skip if using only whole dataset
             if only_whole_data and label != whole_data_label:
@@ -147,15 +152,21 @@ def main():
             
             print('label:', label)
             if label == whole_data_label:
-                indices = np.full(len(labels), True)
+                # indices = np.full(len(labels), True)
+                indices = np.arange(len(labels))
             else:
-                indices = labels == label
-
-            print('#samples in this cluster:', np.sum(indices))
-
+                # indices = labels == label
+                indices = np.argwhere(labels == label)
+                indices = indices.reshape([len(indices)])
+                # print('indices shape:', indices.shape)
+                
+            # print('#samples in this cluster:', np.sum(indices))
+            print('#samples in this cluster:', len(indices))
+            sample_num = len(indices)
+            
             # choose: PCA reduced by sklearn or reduced by packages?
             if use_pca:
-                num_pc = max(1, int(np.sum(indices)/10))
+                num_pc = max(1, sample_num//10)
                 print('using %d principle components' % num_pc)
                 raw_cluster_count_matrix = count_matrix[indices, ...]
                 pca_model = PCA(
@@ -165,7 +176,6 @@ def main():
                 ratio = sum(pca_model.explained_variance_ratio_)
                 print('pca explained variance ratio:', ratio)
 
-                
                 pca_count_matrix = pca_model.transform(raw_cluster_count_matrix)                
                 label_count_matrix = pca_count_matrix
                 label_velocities = pca_model.transform(
@@ -179,11 +189,23 @@ def main():
             Neighbor MAR part
             '''
             mses, r2s = neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num)
+            cluster_centroid_sample_mses, is_centroid_neighbor_indicator = centroid_neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num)
 
             # dont let whole data cluster overwrites everything
             if label != whole_data_label:
                 adata.obs['clusters_neighbor_MAR_mse'][indices] = mses
                 adata.obs['clusters_neighbor_MAR_r2'][indices] = r2s
+
+                adata.obs['clusters_centroid_neighborhood_sample_mses'][indices[is_centroid_neighbor_indicator]] = cluster_centroid_sample_mses
+
+                # debug check
+                # print(indices)
+                # print(adata.obs['clusters_centroid_neighborhood_sample_mses'][indices[is_centroid_neighbor_indicator]].shape)
+                # print(is_centroid_neighbor_indicator.shape, cluster_centroid_sample_mses.shape)
+                # print(cluster_centroid_sample_mses)
+                # print(is_centroid_neighbor_indicator)                
+                adata.obs['is_centroid_neighbor_indicator'][indices[is_centroid_neighbor_indicator]] = label
+
             else:
                 adata.obs['whole_neighbor_MAR_mse'][indices] = mses
                 adata.obs['whole_neighbor_MAR_r2'][indices] = r2s
@@ -239,8 +261,11 @@ def main():
                     'whole_data_squared_error',
                     'clusters_neighbor_MAR_r2',
                     'clusters_neighbor_MAR_mse',
+                    'clusters_centroid_neighborhood_sample_mses',
+                    'is_centroid_neighbor_indicator',
                     'Clusters',
                     'vel_norms'],
+                colorbar=True,
                 save='neighbor_MAR_stats.png')            
 
         else:

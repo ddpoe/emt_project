@@ -202,7 +202,7 @@ def analyze_jacobian(adata, jacob, selected_genes, emt_genes=None, topk=5):
         print('top inhib/exhibit genes coefs:', row_coef[args[:topk]])
 
         is_in_emt = [1 if gene in emt_genes else 0 for gene in top_genes ]
-        print('Whether top genes in gene list (1-yes, 0-no)', is_in_emt)
+        print('Whether top genes in emt gene list (1-yes, 0-no)', is_in_emt)
         print('number of top5 genes in known emt list:', sum(is_in_emt))
         
 
@@ -257,3 +257,25 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None):
         mses.append(mse)
         r2s.append(r2_score)
     return mses, r2s
+
+
+def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None):
+    if dist_mat is None:
+        dist_mat = calc_distance_matrix(data_mat)
+
+    feature_num = neighbor_num // 10
+    center = np.mean(data_mat, axis=0)
+    dist_vec = np.linalg.norm(data_mat - center, axis=1)
+    # print('dist_vec shape:', dist_vec.shape)
+    neighbors = np.argsort(dist_vec)[:neighbor_num]
+    is_center_neighbors = np.full(len(data_mat), False)
+    is_center_neighbors[neighbors] = True
+    # print('neighbor len:', neighbors)
+    
+    specific_mat = data_mat[neighbors, :]
+    neighbor_labels = labels[neighbors, :]
+    model = LinearRegression().fit(specific_mat, neighbor_labels)
+    predicted_vals = model.predict(specific_mat)
+    sample_mses = np.sum((neighbor_labels - predicted_vals)**2, axis=1)
+    
+    return sample_mses, is_center_neighbors
