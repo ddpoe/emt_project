@@ -242,8 +242,7 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None):
     mses, r2s = [], []
     print('dist shape:',  dist_mat.shape)
     for i in range(len(data_mat)):
-        neighbors = np.argsort(dist_mat[i,:])[:neighbor_num]
-        
+        neighbors = np.argsort(dist_mat[i,:])[:neighbor_num]        
         specific_mat = data_mat[neighbors, :]
         neighbor_labels = labels[neighbors, :]
         model = LinearRegression().fit(specific_mat, neighbor_labels)
@@ -277,5 +276,6 @@ def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None):
     model = LinearRegression().fit(specific_mat, neighbor_labels)
     predicted_vals = model.predict(specific_mat)
     sample_mses = np.sum((neighbor_labels - predicted_vals)**2, axis=1)
-    
-    return sample_mses, is_center_neighbors
+
+    min_id = np.argsort(dist_vec)[0]
+    return sample_mses, is_center_neighbors, min_id

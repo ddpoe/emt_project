@@ -136,6 +136,8 @@ def main():
         adata.obs['clusters_centroid_neighborhood_sample_mses'] = np.full(len(adata), -1)
         adata.obs['is_centroid_neighbor_indicator'] = np.zeros(len(adata), dtype=np.int)
         adata.obs['vel_norms'] = numpy.linalg.norm(adata.layers['velocity'], axis=1)
+        adata.obs['whole_data_centroid_sample_errors'] = np.zeros(len(adata))
+        adata.obs['is_whole_centroid_neighbor'] = np.zeros(len(adata)) 
         '''
         analyze each cluster
         '''
@@ -189,7 +191,7 @@ def main():
             Neighbor MAR part
             '''
             mses, r2s = neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num)
-            cluster_centroid_sample_mses, is_centroid_neighbor_indicator = centroid_neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num)
+            cluster_centroid_sample_mses, is_centroid_neighbor_indicator, closest_sample_id_in_indices = centroid_neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num)
 
             # dont let whole data cluster overwrites everything
             if label != whole_data_label:
@@ -209,6 +211,12 @@ def main():
             else:
                 adata.obs['whole_neighbor_MAR_mse'][indices] = mses
                 adata.obs['whole_neighbor_MAR_r2'][indices] = r2s
+                
+                adata.obs['whole_data_centroid_sample_errors'][indices[is_centroid_neighbor_indicator]] = cluster_centroid_sample_mses
+                adata.obs['is_whole_centroid_neighbor'][indices[is_centroid_neighbor_indicator]] = 1
+                adata.obs['is_whole_centroid_neighbor'][indices[closest_sample_id_in_indices]] = 3
+
+                
                 
             '''
             whole cluster MAR
@@ -286,7 +294,16 @@ def main():
                     'whole_data_squared_error',
                     'Clusters',
                     'vel_norms'],
-                save='neighbor_MAR_stats.png')            
+                save='neighbor_MAR_stats.png')
+        scv.pl.scatter(
+            adata,
+            color=[
+                'root_cells',
+                'end_points',
+                'whole_data_centroid_sample_errors',
+                'is_whole_centroid_neighbor',
+                'vel_norms'],
+            save='artificial_center_MAR.png')
             
     def main_graphlasso():
         '''
