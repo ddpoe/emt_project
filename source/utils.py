@@ -33,7 +33,6 @@ def calc_distance_matrix(data):
     return dist_mat
 
         
-
 def get_optimal_K(X, kmin=1, kmax=21):
     distortions = []
     inertias = []
@@ -157,7 +156,8 @@ def analyze_specific_cluster(adata, indices,
     suptitle = 'cluster:' + str(cluster_label)
     scv.pl.scatter(cluster_data,
                    color=['whole_cluster_neighbor_errors', 'vel_norms'],
-                   save='cluster%s_centroids.png' % str(cluster_label))
+                   save='cluster%s_centroids.png' % str(cluster_label),
+                   show=False)
 
     # sometimes fail because of lack of samples
     try:
@@ -182,10 +182,28 @@ def analyze_specific_cluster(adata, indices,
     if pca_model:
         Q = pca_model.components_  # n components x n features
         jacob = Q.T @ jacob @ Q
-    analyze_jacobian(cluster_data, jacob, selected_genes, emt_genes)
+
+    analyze_adata_jacobian_genes(cluster_data, jacob, selected_genes, emt_genes)
 
 
-def analyze_jacobian(adata, jacob, selected_genes, emt_genes=None, topk=5):
+def calc_eigen(jacob):
+    eig_vals, eig_vectors = np.linalg.eig(jacob)
+    return eig_vals, eig_vectors
+
+
+def analyze_jacob_eigen(jacob):
+    eig_vals, eig_vectors = calc_eigen(jacob)
+    print('jacobian shape:', jacob.shape)
+    
+    reals, imgs = [num.real for num in eig_vals], [num.imag for num in eig_vals]
+    plt.scatter(reals, imgs)
+    plt.xlabel('real')
+    plt.ylabel('image')
+    # plt.show()
+    pass
+
+
+def analyze_adata_jacobian_genes(adata, jacob, selected_genes, emt_genes=None, topk=5):
     genes = adata.var_names
     # adata.var_names.get_loc('FN1')
     emt_genes = set(emt_genes)
@@ -197,14 +215,16 @@ def analyze_jacobian(adata, jacob, selected_genes, emt_genes=None, topk=5):
         row_coef = jacob[idx, :]
         args = np.argsort(-np.abs(row_coef))
         top_genes = genes[args[:topk]]
-        print('for gene:', gene)
-        print('top inhib/exhibit genes:', top_genes)
-        print('top inhib/exhibit genes coefs:', row_coef[args[:topk]])
 
         is_in_emt = [1 if gene in emt_genes else 0 for gene in top_genes ]
+
+        print('########################################')
+        print('for gene:', gene)
+        print('top inhib/exhibit genes:', top_genes)
+        print('top inhib/exhibit genes coefs:', row_coef[args[:topk]])        
         print('Whether top genes in emt gene list (1-yes, 0-no)', is_in_emt)
         print('number of top5 genes in known emt list:', sum(is_in_emt))
-        
+        print('########################################')
 
 def filter_a549_MET_samples(adata, meta, day0_only=config.day0_only):
     cell_ids = np.array(meta["Unnamed: 0"]) + 'x'
@@ -258,7 +278,7 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None):
     return mses, r2s
 
 
-def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None):
+def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_model=None):
     if dist_mat is None:
         dist_mat = calc_distance_matrix(data_mat)
 
@@ -278,4 +298,16 @@ def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None):
     sample_mses = np.sum((neighbor_labels - predicted_vals)**2, axis=1)
 
     min_id = np.argsort(dist_vec)[0]
+
+    print("analyze mean centroid jacobian")
+    jacob = model.coef_
+    if not (pca_model is None):
+        pca_jacob = jacob
+        Q = pca_model.components_  # n components x n features
+        gene_jacob = Q.T @ jacob @ Q
+
+        print('PCA space jacob:')
+        analyze_jacob_eigen(pca_jacob)
+        print('gene space jacob:')
+        analyze_jacob_eigen(gene_jacob)
     return sample_mses, is_center_neighbors, min_id

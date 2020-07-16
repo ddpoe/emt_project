@@ -58,7 +58,7 @@ def main():
     print('root cell shape:', root_cells.shape)
 
     # gen figures
-    scv.pl.velocity_embedding_stream(adata, save='vel_stream.png')
+    scv.pl.velocity_embedding_stream(adata, save='vel_stream.png', show=False)
     
     count_matrix = adata.X.todense()[:, ...]
     velocities = adata.layers['velocity']
@@ -167,6 +167,7 @@ def main():
             sample_num = len(indices)
             
             # choose: PCA reduced by sklearn or reduced by packages?
+            pca_model = None
             if use_pca:
                 num_pc = max(1, sample_num//10)
                 print('using %d principle components' % num_pc)
@@ -191,7 +192,7 @@ def main():
             Neighbor MAR part
             '''
             mses, r2s = neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num)
-            cluster_centroid_sample_mses, is_centroid_neighbor_indicator, closest_sample_id_in_indices = centroid_neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num)
+            cluster_centroid_sample_mses, is_centroid_neighbor_indicator, closest_sample_id_in_indices = centroid_neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num, pca_model=pca_model)
 
             # dont let whole data cluster overwrites everything
             if label != whole_data_label:
@@ -260,7 +261,8 @@ def main():
                     'cluster_squared_error',
                     'whole_data_squared_error',
                     'Clusters'],
-                save='error_root_end_points.png')
+                save='error_root_end_points.png',
+                show=False)
             scv.pl.scatter(
                 adata,
                 color=[
@@ -274,7 +276,8 @@ def main():
                     'Clusters',
                     'vel_norms'],
                 colorbar=True,
-                save='neighbor_MAR_stats.png')            
+                save='neighbor_MAR_stats.png',
+                show=False)
 
         else:
             scv.pl.scatter(
@@ -284,7 +287,8 @@ def main():
                     'end_points',
                     'whole_data_squared_error',
                     'Clusters'],
-                save='error_root_end_points.png')
+                save='error_root_end_points.png',
+                show=False)
 
             scv.pl.scatter(
                 adata,
@@ -303,8 +307,11 @@ def main():
                 'whole_data_centroid_sample_errors',
                 'is_whole_centroid_neighbor',
                 'vel_norms'],
-            save='artificial_center_MAR.png')
-            
+            save='artificial_center_MAR.png',
+            show=False)
+        adata.obs.to_csv('./figures/adata_obs.csv')
+
+        
     def main_graphlasso():
         '''
         graph lasso

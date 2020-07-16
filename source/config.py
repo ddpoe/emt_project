@@ -1,4 +1,4 @@
-only_whole_data = False # do MAR in each cluster?
+only_whole_data = True # do MAR in each cluster?
 use_pca = True
 use_emt_gene_filter = False
 day0_only = True
