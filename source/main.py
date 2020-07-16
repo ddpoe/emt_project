@@ -16,13 +16,15 @@ def main():
     loom_data_path = '../data/a549_tgfb1.loom'
     meta_path = '../data/a549_tgfb1_meta.csv'
     
-    use_pancreas_data = False
-    adata = scv.read_loom(loom_data_path) # adata=dyn.read_loom(loom_data_path)
-    meta = pd.read_csv(meta_path)
-    adata = filter_a549_MET_samples(adata, meta, day0_only=config.day0_only)
-    # gen_all_gene_pair_vector_field(adata, config.selected_genes_jacobian)
-    # adata = scv.datasets.pancreas()
-    # use_pancreas_data = True
+    use_pancreas_data = True
+    adata = None
+    if not use_pancreas_data:
+        adata = scv.read_loom(loom_data_path) # adata=dyn.read_loom(loom_data_path)
+        meta = pd.read_csv(meta_path)
+        adata = filter_a549_MET_samples(adata, meta, day0_only=config.day0_only)
+        # gen_all_gene_pair_vector_field(adata, config.selected_genes_jacobian)
+    else:
+        adata = scv.datasets.pancreas()
 
     emt_gene_path = '../data/gene_lists/emt_genes_weikang.txt'
     emt_genes = read_list(emt_gene_path)
@@ -96,13 +98,11 @@ def main():
         # knee = get_optimal_K(pca_count_matrix, kmin=1, kmax=21)
         # knee = get_optimal_K(count_matrix, kmin=1, kmax=21)
         knee = 4  # calculated
+
+        if use_pancreas_data:
+            knee = 7
         print('knee of kmeans graph:', knee)
-        if use_pca:
-            kmeans = KMeans(
-                n_clusters=knee,
-                random_state=0).fit(count_matrix)
-        else:
-            kmeans = KMeans(n_clusters=knee, random_state=0).fit(count_matrix)
+        kmeans = KMeans(n_clusters=knee, random_state=0).fit(count_matrix)
         cluster_centers = kmeans.cluster_centers_
         kmeans_labels = kmeans.labels_
         adata.obs['kmeans_labels'] = kmeans_labels

@@ -201,6 +201,11 @@ def analyze_jacob_eigen(jacob):
     plt.xlabel('real')
     plt.ylabel('image')
     # plt.show()
+    sorted_reals = sorted(reals, reverse=True)
+    print(sorted_reals)
+    sorted_imgs = sorted(imgs, reverse=True)
+    print(sorted_imgs)
+    
     pass
 
 
@@ -227,6 +232,7 @@ def analyze_adata_jacobian_genes(adata, jacob, selected_genes, emt_genes=None, t
         print('number of top5 genes in known emt list:', sum(is_in_emt))
         print('########################################')
 
+        
 def filter_a549_MET_samples(adata, meta, day0_only=config.day0_only):
     cell_ids = np.array(meta["Unnamed: 0"]) + 'x'
     for ID in range(len(cell_ids)):
@@ -309,6 +315,6 @@ def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_mod
 
         print('PCA space jacob:')
         analyze_jacob_eigen(pca_jacob)
-        print('gene space jacob:')
-        analyze_jacob_eigen(gene_jacob)
+        # print('gene space jacob:')
+        # analyze_jacob_eigen(gene_jacob)
     return sample_mses, is_center_neighbors, min_id
