@@ -170,7 +170,8 @@ def analyze_specific_cluster(adata, indices,
             str(cluster_label),
             figsize=(
                 14,
-                10))
+                10),
+            show=False)
         pass
     except Exception as e:
         print('failed to generate velocity embedding stream')

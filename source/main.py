@@ -298,7 +298,8 @@ def main():
                     'whole_data_squared_error',
                     'Clusters',
                     'vel_norms'],
-                save='neighbor_MAR_stats.png')
+                save='neighbor_MAR_stats.png',
+                show=False)
         scv.pl.scatter(
             adata,
             color=[
