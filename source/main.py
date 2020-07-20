@@ -16,12 +16,10 @@ def main():
     loom_data_path = '../data/a549_tgfb1.loom'
     meta_path = '../data/a549_tgfb1_meta.csv'
     
-    use_pancreas_data = True
     adata = None
-    if not use_pancreas_data:
+    if not config.use_dataset == 'pancreas':
         adata = scv.read_loom(loom_data_path) # adata=dyn.read_loom(loom_data_path)
         meta = pd.read_csv(meta_path)
-        adata = filter_a549_MET_samples(adata, meta, day0_only=config.day0_only)
         # gen_all_gene_pair_vector_field(adata, config.selected_genes_jacobian)
     else:
         adata = scv.datasets.pancreas()
@@ -55,12 +53,17 @@ def main():
     scv.tl.velocity_graph(adata)
 
     scv.tl.terminal_states(adata)
+    scv.pl.velocity_embedding_stream(adata, save='vel_stream.png', show=False)
+
+    if config.use_dataset == 'a549':
+        adata = filter_a549_MET_samples(adata, meta, day0_only=config.day0_only)
+        
     root_cells = adata.obs['root_cells']
     end_cells = adata.obs['end_points']
     print('root cell shape:', root_cells.shape)
 
     # gen figures
-    scv.pl.velocity_embedding_stream(adata, save='vel_stream.png', show=False)
+
     
     count_matrix = adata.X.todense()[:, ...]
     velocities = adata.layers['velocity']
@@ -99,7 +102,7 @@ def main():
         # knee = get_optimal_K(count_matrix, kmin=1, kmax=21)
         knee = 4  # calculated
 
-        if use_pancreas_data:
+        if config.use_dataset == 'pancreas':
             knee = 7
         print('knee of kmeans graph:', knee)
         kmeans = KMeans(n_clusters=knee, random_state=0).fit(count_matrix)
@@ -117,7 +120,7 @@ def main():
         '''
         gen ranked genes
         '''
-        if use_pancreas_data:
+        if config.use_dataset == 'pancreas':
             # due to package issue, somehow pancreas dataset has clusters not capitalized
             scv.tl.rank_velocity_genes(adata, groupby='clusters')
         else:
@@ -133,6 +136,7 @@ def main():
         adata.obs['clusters_neighbor_MAR_r2'] = np.zeros(len(adata))
         adata.obs['whole_neighbor_MAR_mse'] = np.zeros(len(adata))
         adata.obs['whole_neighbor_MAR_r2'] = np.zeros(len(adata))
+        adata.obs['whole_neighbor_max_eigenVal_real'] = np.zeros(len(adata))
         adata.obs['clusters_centroid_neighborhood_sample_mses'] = np.full(len(adata), -1)
         adata.obs['is_centroid_neighbor_indicator'] = np.zeros(len(adata), dtype=np.int)
         adata.obs['vel_norms'] = numpy.linalg.norm(adata.layers['velocity'], axis=1)
@@ -191,7 +195,7 @@ def main():
             '''
             Neighbor MAR part
             '''
-            mses, r2s = neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num)
+            mses, r2s, max_eigenval_reals = neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num)
             cluster_centroid_sample_mses, is_centroid_neighbor_indicator, closest_sample_id_in_indices = centroid_neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num, pca_model=pca_model)
 
             # dont let whole data cluster overwrites everything
@@ -212,6 +216,7 @@ def main():
             else:
                 adata.obs['whole_neighbor_MAR_mse'][indices] = mses
                 adata.obs['whole_neighbor_MAR_r2'][indices] = r2s
+                adata.obs['whole_neighbor_max_eigenVal_real'][indices] = max_eigenval_reals
                 
                 adata.obs['whole_data_centroid_sample_errors'][indices[is_centroid_neighbor_indicator]] = cluster_centroid_sample_mses
                 adata.obs['is_whole_centroid_neighbor'][indices[is_centroid_neighbor_indicator]] = 1
@@ -267,7 +272,8 @@ def main():
                 adata,
                 color=[
                     'whole_neighbor_MAR_r2',
-                    'whole_neighbor_MAR_mse',                    
+                    'whole_neighbor_MAR_mse',
+                    'whole_neighbor_max_eigenVal_real',
                     'whole_data_squared_error',
                     'clusters_neighbor_MAR_r2',
                     'clusters_neighbor_MAR_mse',
@@ -295,6 +301,7 @@ def main():
                 color=[
                     'whole_neighbor_MAR_r2',
                     'whole_neighbor_MAR_mse',
+                    'whole_neighbor_max_eigenVal_real',
                     'whole_data_squared_error',
                     'Clusters',
                     'vel_norms'],

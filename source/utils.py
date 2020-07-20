@@ -201,6 +201,7 @@ def analyze_jacob_eigen(jacob):
     plt.xlabel('real')
     plt.ylabel('image')
     # plt.show()
+    plt.savefig('./figures/jacob_eigen_complex_plane.png')
     sorted_reals = sorted(reals, reverse=True)
     print(sorted_reals)
     sorted_imgs = sorted(imgs, reverse=True)
@@ -266,12 +267,13 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None):
 
     feature_num = neighbor_num // 10
     data_mat = data_mat[:, :feature_num]
-    mses, r2s = [], []
+    sub_labels = labels[:, :feature_num]
+    mses, r2s, max_eigenvals = [], [], []
     print('dist shape:',  dist_mat.shape)
     for i in range(len(data_mat)):
         neighbors = np.argsort(dist_mat[i,:])[:neighbor_num]        
         specific_mat = data_mat[neighbors, :]
-        neighbor_labels = labels[neighbors, :]
+        neighbor_labels = sub_labels[neighbors, :]
         model = LinearRegression().fit(specific_mat, neighbor_labels)
         predicted_vals = model.predict(specific_mat)
 
@@ -280,9 +282,13 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None):
                      .mean_squared_error(neighbor_labels,
                                          predicted_vals)
         # print('center:%d, r^2 score: %.5f, mse:%.5f' % (i, r2_score, mse))
+        # print('model.coef_ shape:', model.coef_.shape)
+        eigen_vals, eigen_vectors = calc_eigen(model.coef_)
+        eigen_reals = [num.real for num in eigen_vals]
+        max_eigenvals.append(max(eigen_reals))
         mses.append(mse)
         r2s.append(r2_score)
-    return mses, r2s
+    return mses, r2s, max_eigenvals
 
 
 def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_model=None):

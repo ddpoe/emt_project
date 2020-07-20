@@ -4,9 +4,9 @@ use_emt_gene_filter = False
 day0_only = True
 # selected_genes_jacobian = ['FN1', 'SNAI2', 'VIM', 'GEM']
 selected_genes_jacobian = ['FN1', 'PMEPA1', 'SETBP1', 'PLA2G4A', 'TM4SF20' , 'SMIM14']
-
 two_gene_graph_dir = './figures/two_gene_vector_field'
-
-MAR_neighbor_num = 50
-
-use_pancreas_data = True
+MAR_neighbor_num = 100
+# use_pancreas_data = False
+use_dataset = 'a549'
+# use_dataset = 'pancreas'
+# calculate_velocity_with_all_gene = True
