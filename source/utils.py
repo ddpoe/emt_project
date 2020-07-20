@@ -304,8 +304,8 @@ def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_mod
     is_center_neighbors[neighbors] = True
     # print('neighbor len:', neighbors)
     
-    specific_mat = data_mat[neighbors, :]
-    neighbor_labels = labels[neighbors, :]
+    specific_mat = data_mat[neighbors, :feature_num]
+    neighbor_labels = labels[neighbors, :feature_num]
     model = LinearRegression().fit(specific_mat, neighbor_labels)
     predicted_vals = model.predict(specific_mat)
     sample_mses = np.sum((neighbor_labels - predicted_vals)**2, axis=1)
@@ -316,7 +316,7 @@ def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_mod
     jacob = model.coef_
     if not (pca_model is None):
         pca_jacob = jacob
-        Q = pca_model.components_  # n components x n features
+        Q = pca_model.components_[:feature_num, :]  # n principle components x n original features
         gene_jacob = Q.T @ jacob @ Q
 
         print('PCA space jacob:')
