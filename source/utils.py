@@ -261,14 +261,18 @@ def filter_a549_MET_samples(adata, meta, day0_only=config.day0_only):
 
     
 
-def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None):
+def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None, pca_model=None):
     if dist_mat is None:
         dist_mat = calc_distance_matrix(data_mat)
 
-    feature_num = neighbor_num // 10
-    data_mat = data_mat[:, :feature_num]
-    sub_labels = labels[:, :feature_num]
-    mses, r2s, max_eigenvals = [], [], []
+    num_feature = neighbor_num // 10
+    if pca_model:
+        ratio = sum(pca_model.explained_variance_ratio_[:num_feature])
+        print('neighborhood pca explained variance:', ratio, '#feature:', num_feature)
+    data_mat = data_mat[:, :num_feature]
+    sub_labels = labels[:, :num_feature]
+    # sub_labels = labels
+    mses, r2s, max_eigenvals, feature_norms = [], [], [], []
     print('dist shape:',  dist_mat.shape)
     for i in range(len(data_mat)):
         neighbors = np.argsort(dist_mat[i,:])[:neighbor_num]        
@@ -285,17 +289,19 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None):
         # print('model.coef_ shape:', model.coef_.shape)
         eigen_vals, eigen_vectors = calc_eigen(model.coef_)
         eigen_reals = [num.real for num in eigen_vals]
+        feature_norm = np.mean(np.linalg.norm(neighbor_labels, axis=1))
         max_eigenvals.append(max(eigen_reals))
         mses.append(mse)
         r2s.append(r2_score)
-    return mses, r2s, max_eigenvals
+        feature_norms.append(feature_norm)
+    return mses, r2s, max_eigenvals, feature_norms
 
 
 def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_model=None):
     if dist_mat is None:
         dist_mat = calc_distance_matrix(data_mat)
 
-    feature_num = neighbor_num // 10
+    num_feature = neighbor_num // 10
     center = np.mean(data_mat, axis=0)
     dist_vec = np.linalg.norm(data_mat - center, axis=1)
     # print('dist_vec shape:', dist_vec.shape)
@@ -304,8 +310,9 @@ def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_mod
     is_center_neighbors[neighbors] = True
     # print('neighbor len:', neighbors)
     
-    specific_mat = data_mat[neighbors, :feature_num]
-    neighbor_labels = labels[neighbors, :feature_num]
+    specific_mat = data_mat[neighbors, :num_feature]
+    neighbor_labels = labels[neighbors, :num_feature]
+    # neighbor_labels = labels[neighbors, :] # predict all velocities
     model = LinearRegression().fit(specific_mat, neighbor_labels)
     predicted_vals = model.predict(specific_mat)
     sample_mses = np.sum((neighbor_labels - predicted_vals)**2, axis=1)
@@ -316,7 +323,7 @@ def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_mod
     jacob = model.coef_
     if not (pca_model is None):
         pca_jacob = jacob
-        Q = pca_model.components_[:feature_num, :]  # n principle components x n original features
+        Q = pca_model.components_[:num_feature, :]  # n principle components x n original features
         gene_jacob = Q.T @ jacob @ Q
 
         print('PCA space jacob:')

@@ -137,6 +137,7 @@ def main():
         adata.obs['whole_neighbor_MAR_mse'] = np.zeros(len(adata))
         adata.obs['whole_neighbor_MAR_r2'] = np.zeros(len(adata))
         adata.obs['whole_neighbor_max_eigenVal_real'] = np.zeros(len(adata))
+        adata.obs['whole_neighbor_avg_vel_norms'] = np.zeros(len(adata))
         adata.obs['clusters_centroid_neighborhood_sample_mses'] = np.full(len(adata), -1)
         adata.obs['is_centroid_neighbor_indicator'] = np.zeros(len(adata), dtype=np.int)
         adata.obs['vel_norms'] = numpy.linalg.norm(adata.layers['velocity'], axis=1)
@@ -181,7 +182,7 @@ def main():
                     random_state=7).fit(raw_cluster_count_matrix)
 
                 ratio = sum(pca_model.explained_variance_ratio_)
-                print('pca explained variance ratio:', ratio)
+                print('total cluster pca explained variance ratio:', ratio)
 
                 pca_count_matrix = pca_model.transform(raw_cluster_count_matrix)                
                 label_count_matrix = pca_count_matrix
@@ -195,7 +196,7 @@ def main():
             '''
             Neighbor MAR part
             '''
-            mses, r2s, max_eigenval_reals = neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num)
+            mses, r2s, max_eigenval_reals, feature_norms = neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num, pca_model=pca_model)
             cluster_centroid_sample_mses, is_centroid_neighbor_indicator, closest_sample_id_in_indices = centroid_neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num, pca_model=pca_model)
 
             # dont let whole data cluster overwrites everything
@@ -217,6 +218,7 @@ def main():
                 adata.obs['whole_neighbor_MAR_mse'][indices] = mses
                 adata.obs['whole_neighbor_MAR_r2'][indices] = r2s
                 adata.obs['whole_neighbor_max_eigenVal_real'][indices] = max_eigenval_reals
+                adata.obs['whole_neighbor_avg_vel_norms'] = feature_norms
                 
                 adata.obs['whole_data_centroid_sample_errors'][indices[is_centroid_neighbor_indicator]] = cluster_centroid_sample_mses
                 adata.obs['is_whole_centroid_neighbor'][indices[is_centroid_neighbor_indicator]] = 1
@@ -252,7 +254,7 @@ def main():
                   % (label, r2_score, mse))
             # scv.pl.scatter(adata, color=[ 'root_cells', 'end_points', 'errors', 'kmeans_labels'], save='error_root_end_points.png')
             if label == whole_data_label:
-                adata.obs['whole_data_squared_error'] = errors
+                adata.obs['whole_data_MAR_squared_error'] = errors
                 pass
             else:
                 adata.obs['cluster_squared_error'] = errors
@@ -264,7 +266,7 @@ def main():
                     'root_cells',
                     'end_points',
                     'cluster_squared_error',
-                    'whole_data_squared_error',
+                    'whole_data_MAR_squared_error',
                     'Clusters'],
                 save='error_root_end_points.png',
                 show=False)
@@ -274,7 +276,7 @@ def main():
                     'whole_neighbor_MAR_r2',
                     'whole_neighbor_MAR_mse',
                     'whole_neighbor_max_eigenVal_real',
-                    'whole_data_squared_error',
+                    'whole_data_MAR_squared_error',
                     'clusters_neighbor_MAR_r2',
                     'clusters_neighbor_MAR_mse',
                     'clusters_centroid_neighborhood_sample_mses',
@@ -291,7 +293,7 @@ def main():
                 color=[
                     'root_cells',
                     'end_points',
-                    'whole_data_squared_error',
+                    'whole_data_MAR_squared_error',
                     'Clusters'],
                 save='error_root_end_points.png',
                 show=False)
@@ -301,8 +303,9 @@ def main():
                 color=[
                     'whole_neighbor_MAR_r2',
                     'whole_neighbor_MAR_mse',
+                    'whole_neighbor_avg_vel_norms',
                     'whole_neighbor_max_eigenVal_real',
-                    'whole_data_squared_error',
+                    'whole_data_MAR_squared_error',
                     'Clusters',
                     'vel_norms'],
                 save='neighbor_MAR_stats.png',
