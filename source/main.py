@@ -57,6 +57,8 @@ def main():
 
     if config.use_dataset == 'a549':
         adata = filter_a549_MET_samples(adata, meta, day0_only=config.day0_only)
+    else:
+        adata.obs['Time'] = np.zeros(len(adata), dtype=np.int)
         
     root_cells = adata.obs['root_cells']
     end_cells = adata.obs['end_points']
@@ -100,9 +102,13 @@ def main():
         '''
         # knee = get_optimal_K(pca_count_matrix, kmin=1, kmax=21)
         # knee = get_optimal_K(count_matrix, kmin=1, kmax=21)
-        knee = 4  # calculated
-
-        if config.use_dataset == 'pancreas':
+        knee = 4 # calculated
+        if config.use_dataset == 'a549':
+            if not config.day0_only:
+                knee = 8
+            else:
+                knee = 4
+        elif config.use_dataset == 'pancreas':
             knee = 7
         print('knee of kmeans graph:', knee)
         kmeans = KMeans(n_clusters=knee, random_state=0).fit(count_matrix)
@@ -270,7 +276,7 @@ def main():
                     'Clusters'],
                 save='error_root_end_points.png',
                 show=False)
-            scv.pl.scatter(
+            scv.pl.velocity_embedding_stream(
                 adata,
                 color=[
                     'whole_neighbor_MAR_r2',
@@ -297,19 +303,18 @@ def main():
                     'Clusters'],
                 save='error_root_end_points.png',
                 show=False)
-
-            scv.pl.scatter(
-                adata,
-                color=[
-                    'whole_neighbor_MAR_r2',
-                    'whole_neighbor_MAR_mse',
-                    'whole_neighbor_avg_vel_norms',
-                    'whole_neighbor_max_eigenVal_real',
-                    'whole_data_MAR_squared_error',
-                    'Clusters',
-                    'vel_norms'],
-                save='neighbor_MAR_stats.png',
-                show=False)
+            scv.pl.velocity_embedding_stream(adata,
+                                             color=[
+                                                 'whole_neighbor_MAR_r2',
+                                                 'whole_neighbor_MAR_mse',
+                                                 'whole_neighbor_avg_vel_norms',
+                                                 'whole_neighbor_max_eigenVal_real',
+                                                 'whole_data_MAR_squared_error',
+                                                 'Time',
+                                                 'Clusters',
+                                                 'vel_norms'],
+                                             save='neighbor_MAR_stats.png',
+                                             show=False)
         scv.pl.scatter(
             adata,
             color=[

@@ -145,7 +145,7 @@ def analyze_specific_cluster(adata, indices,
     '''
     calculate neighbor MSE sum
     '''
-    num_neighbors = 10
+    num_neighbors = config.MAR_neighbor_num
     neighbor_errors = []
     for i in range(N):
         argsorted = np.argsort(dist[i, :])
@@ -164,7 +164,7 @@ def analyze_specific_cluster(adata, indices,
         scv.pl.velocity_embedding_stream(
             cluster_data,
             color=[
-                'neighbor_errors',
+                'whole_cluster_neighbor_errors',
                 'vel_norms'],
             save='cluster%s_vel_centroids.png' %
             str(cluster_label),
@@ -275,7 +275,7 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None, pca_model=No
     mses, r2s, max_eigenvals, feature_norms = [], [], [], []
     print('dist shape:',  dist_mat.shape)
     for i in range(len(data_mat)):
-        neighbors = np.argsort(dist_mat[i,:])[:neighbor_num]        
+        neighbors = np.argsort(dist_mat[i, :])[:neighbor_num]        
         specific_mat = data_mat[neighbors, :]
         neighbor_labels = sub_labels[neighbors, :]
         model = LinearRegression().fit(specific_mat, neighbor_labels)
