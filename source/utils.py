@@ -15,7 +15,7 @@ from kneed import KneeLocator
 import matplotlib.pyplot as plt
 from scipy import interpolate
 from sklearn.cluster import KMeans
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Lasso
 import sklearn
 import sklearn.covariance
 import scipy
@@ -251,9 +251,9 @@ def filter_a549_MET_samples(adata, meta, day0_only=config.day0_only):
 
     time_raw = adata.obs['Time']
     # no _rm in time means EMT
-    if day0_only:
-        is_day0 = np.array([time == '0d' for time in time_raw])
-        adata = adata[is_day0]
+    if day0_only != 'all':
+        is_day0 = np.array([time in day0_only for time in time_raw])
+        adata = adata[is_day0]        
     else:
         is_EMT = np.array([time.find('_rm') == -1 for time in time_raw])
         adata = adata[is_EMT]
@@ -262,6 +262,9 @@ def filter_a549_MET_samples(adata, meta, day0_only=config.day0_only):
     
 
 def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None, pca_model=None):
+    '''
+    labels: RNA velocities
+    '''
     if dist_mat is None:
         dist_mat = calc_distance_matrix(data_mat)
 
@@ -272,13 +275,14 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None, pca_model=No
     data_mat = data_mat[:, :num_feature]
     sub_labels = labels[:, :num_feature]
     # sub_labels = labels
-    mses, r2s, max_eigenvals, feature_norms = [], [], [], []
+    mses, r2s, max_eigenvals, feature_norms, bias_norms = [], [], [], [], []
     print('dist shape:',  dist_mat.shape)
     for i in range(len(data_mat)):
         neighbors = np.argsort(dist_mat[i, :])[:neighbor_num]        
         specific_mat = data_mat[neighbors, :]
         neighbor_labels = sub_labels[neighbors, :]
         model = LinearRegression().fit(specific_mat, neighbor_labels)
+        # model = Lasso(alpha=config.lasso_alpha).fit(specific_mat, neighbor_labels)
         predicted_vals = model.predict(specific_mat)
 
         r2_score = model.score(specific_mat, neighbor_labels)
@@ -294,7 +298,9 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None, pca_model=No
         mses.append(mse)
         r2s.append(r2_score)
         feature_norms.append(feature_norm)
-    return mses, r2s, max_eigenvals, feature_norms
+        bias_norm = np.linalg.norm(model.intercept_)
+        bias_norms.append(bias_norm)
+    return mses, r2s, max_eigenvals, feature_norms, bias_norms
 
 
 def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_model=None):
@@ -331,3 +337,7 @@ def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_mod
         # print('gene space jacob:')
         # analyze_jacob_eigen(gene_jacob)
     return sample_mses, is_center_neighbors, min_id
+
+
+def analyze_neighbor_MAR(adata):
+    pass

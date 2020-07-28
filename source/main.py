@@ -142,18 +142,20 @@ def main():
         adata.obs['clusters_neighbor_MAR_r2'] = np.zeros(len(adata))
         adata.obs['whole_neighbor_MAR_mse'] = np.zeros(len(adata))
         adata.obs['whole_neighbor_MAR_r2'] = np.zeros(len(adata))
+        adata.obs['whole_neighbor_bias_norms'] = np.zeros(len(adata))
         adata.obs['whole_neighbor_max_eigenVal_real'] = np.zeros(len(adata))
         adata.obs['whole_neighbor_avg_vel_norms'] = np.zeros(len(adata))
+        
         adata.obs['clusters_centroid_neighborhood_sample_mses'] = np.full(len(adata), -1)
         adata.obs['is_centroid_neighbor_indicator'] = np.zeros(len(adata), dtype=np.int)
         adata.obs['vel_norms'] = numpy.linalg.norm(adata.layers['velocity'], axis=1)
         adata.obs['whole_data_centroid_sample_errors'] = np.zeros(len(adata))
-        adata.obs['is_whole_centroid_neighbor'] = np.zeros(len(adata)) 
+        adata.obs['is_whole_centroid_neighbor'] = np.zeros(len(adata))
+        
         '''
         analyze each cluster
         '''
-        # model=LinearRegression().fit(pca_count_matrix, velocities)
-        whole_data_label = -1
+        whole_data_label = -1 # denotes using all data as a cluster
         label_set.add(whole_data_label)  # -1 denote for whole dataset
         raw_labels = labels
         labels = raw_labels.values
@@ -202,7 +204,7 @@ def main():
             '''
             Neighbor MAR part
             '''
-            mses, r2s, max_eigenval_reals, feature_norms = neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num, pca_model=pca_model)
+            mses, r2s, max_eigenval_reals, feature_norms, bias_norms = neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num, pca_model=pca_model)
             cluster_centroid_sample_mses, is_centroid_neighbor_indicator, closest_sample_id_in_indices = centroid_neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num, pca_model=pca_model)
 
             # dont let whole data cluster overwrites everything
@@ -225,7 +227,7 @@ def main():
                 adata.obs['whole_neighbor_MAR_r2'][indices] = r2s
                 adata.obs['whole_neighbor_max_eigenVal_real'][indices] = max_eigenval_reals
                 adata.obs['whole_neighbor_avg_vel_norms'] = feature_norms
-                
+                adata.obs['whole_neighbor_bias_norms'] = bias_norms
                 adata.obs['whole_data_centroid_sample_errors'][indices[is_centroid_neighbor_indicator]] = cluster_centroid_sample_mses
                 adata.obs['is_whole_centroid_neighbor'][indices[is_centroid_neighbor_indicator]] = 1
                 adata.obs['is_whole_centroid_neighbor'][indices[closest_sample_id_in_indices]] = 3
@@ -235,7 +237,7 @@ def main():
             '''
             whole cluster MAR
             '''
-            model = LinearRegression().fit(label_count_matrix, label_velocities)
+            model = Lasso(alpha=config.lasso_alpha).fit(label_count_matrix, label_velocities)
             predicted_velocities = model.predict(label_count_matrix)
             diff = predicted_velocities - label_velocities
             diff = np.sum(diff**2, axis=-1)
@@ -307,6 +309,7 @@ def main():
                                              color=[
                                                  'whole_neighbor_MAR_r2',
                                                  'whole_neighbor_MAR_mse',
+                                                 'whole_neighbor_bias_norms',
                                                  'whole_neighbor_avg_vel_norms',
                                                  'whole_neighbor_max_eigenVal_real',
                                                  'whole_data_MAR_squared_error',
