@@ -1,4 +1,5 @@
 from utils import *
+from eigen_analysis import *
 import config
 
 def run_graphlasso(X, lm=0.001, prefix=''):
@@ -152,6 +153,8 @@ def main():
         adata.obs['whole_data_centroid_sample_errors'] = np.zeros(len(adata))
         adata.obs['is_whole_centroid_neighbor'] = np.zeros(len(adata))
         
+        adata.uns['neighbor_jacobs'] = [[] for _ in range(len(adata))]
+        
         '''
         analyze each cluster
         '''
@@ -204,9 +207,15 @@ def main():
             '''
             Neighbor MAR part
             '''
-            mses, r2s, max_eigenval_reals, feature_norms, bias_norms = neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num, pca_model=pca_model)
+            mses, r2s, max_eigenval_reals, feature_norms, bias_norms, jacobs = neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num, pca_model=pca_model)
             cluster_centroid_sample_mses, is_centroid_neighbor_indicator, closest_sample_id_in_indices = centroid_neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num, pca_model=pca_model)
 
+            analyze_group_jacobian(adata[indices], jacobs, pca_model=pca_model, group_name='cluster'+str(label))
+            eigen_stable_subset = np.array(max_eigenval_reals) < 0
+            analyze_group_jacobian(adata[indices[eigen_stable_subset]],
+                                   np.array(jacobs)[eigen_stable_subset, ...],
+                                   pca_model=pca_model,
+                                   group_name='cluster'+str(label) + 'eigenStable')
             # dont let whole data cluster overwrites everything
             if label != whole_data_label:
                 adata.obs['clusters_neighbor_MAR_mse'][indices] = mses
@@ -231,6 +240,10 @@ def main():
                 adata.obs['whole_data_centroid_sample_errors'][indices[is_centroid_neighbor_indicator]] = cluster_centroid_sample_mses
                 adata.obs['is_whole_centroid_neighbor'][indices[is_centroid_neighbor_indicator]] = 1
                 adata.obs['is_whole_centroid_neighbor'][indices[closest_sample_id_in_indices]] = 3
+
+                for i in range(len(indices)):
+                    index = indices[i]
+                    adata.uns['neighbor_jacobs'][index] = jacobs[i]
 
                 
                 
@@ -329,7 +342,6 @@ def main():
             save='artificial_center_MAR.png',
             show=False)
         adata.obs.to_csv('./figures/adata_obs.csv')
-
         
     def main_graphlasso():
         '''

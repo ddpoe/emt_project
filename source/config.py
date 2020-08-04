@@ -1,13 +1,14 @@
-only_whole_data = True # do MAR in whole data only, or in each cluster as well?
+only_whole_data = False # do MAR in whole data only, or in each cluster as well?
 use_pca = True
 use_emt_gene_filter = False
-day0_only = ['3d', '7d'] # which time subset do we want to use? set to 'all' to include all day data
+# day0_only = ['0d', '8h', '1d', '3d', '7d'] # which time subset do we want to use? set to 'all' to include all day data
+day0_only = 'all' # which time subset do we want to use? set to 'all' to include all day data
 # selected_genes_jacobian = ['FN1', 'SNAI2', 'VIM', 'GEM']
 selected_genes_jacobian = ['FN1', 'PMEPA1', 'SETBP1', 'PLA2G4A', 'TM4SF20' , 'SMIM14']
 two_gene_graph_dir = './figures/two_gene_vector_field'
 MAR_neighbor_num = 40
 # use_pancreas_data = False
 use_dataset = 'a549'
-lasso_alpha = 0.00001
+lasso_alpha = 0.0001
 # use_dataset = 'pancreas'
 # calculate_velocity_with_all_gene = True
