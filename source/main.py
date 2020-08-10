@@ -57,7 +57,7 @@ def main():
     scv.pl.velocity_embedding_stream(adata, save='vel_stream.png', show=False)
 
     if config.use_dataset == 'a549':
-        adata = filter_a549_MET_samples(adata, meta, day0_only=config.day0_only)
+        adata = filter_a549_MET_samples(adata, meta, include_a549_days=config.include_a549_days)
     else:
         adata.obs['Time'] = np.zeros(len(adata), dtype=np.int)
         
@@ -105,7 +105,7 @@ def main():
         # knee = get_optimal_K(count_matrix, kmin=1, kmax=21)
         knee = 4 # calculated
         if config.use_dataset == 'a549':
-            if not config.day0_only:
+            if not config.include_a549_days:
                 knee = 8
             else:
                 knee = 4

@@ -154,7 +154,7 @@ def analyze_adata_jacobian_genes(adata, jacob, selected_genes, emt_genes=None, t
         print('########################################')
 
         
-def filter_a549_MET_samples(adata, meta, day0_only=config.day0_only):
+def filter_a549_MET_samples(adata, meta, include_a549_days=config.include_a549_days):
     cell_ids = np.array(meta["Unnamed: 0"]) + 'x'
     for ID in range(len(cell_ids)):
         # This is needed to make the cell ids have the same syntax as the loom
@@ -171,8 +171,8 @@ def filter_a549_MET_samples(adata, meta, day0_only=config.day0_only):
 
     time_raw = adata.obs['Time']
     # no _rm in time means EMT
-    if day0_only != 'all':
-        is_day0 = np.array([time in day0_only for time in time_raw])
+    if include_a549_days != 'all':
+        is_day0 = np.array([time in include_a549_days for time in time_raw])
         adata = adata[is_day0]        
     else:
         is_EMT = np.array([time.find('_rm') == -1 for time in time_raw])
@@ -278,15 +278,15 @@ def analyze_group_jacobian(adata, jacobs, topk_eigen=4, topk_gene=10, pca_model=
         topk_eigenvals = np.array(eig_vals[args[:topk_eigen]])
         # topk_eigenvectors = eig_vectors[args[:topk_eigen], ...]
         if pca_model:
-            topk_eigenvectors = (Q.T[:, :config.MAR_neighbor_num//10]) @ np.array(eig_vectors)
+            topk_eigenvectors = (Q.T[:, :config.MAR_neighbor_num//10]) @ np.array(eig_vectors) # columns are eigenvectors by math convention
             topk_eigenvectors = topk_eigenvectors.T
             # topk_eigenvectors = topk_eigenvectors[..., :topk_eigen]
-        print('gene eigen vector shape:', topk_eigenvectors.shape)
+        # print('gene eigen vector shape:', topk_eigenvectors.shape)
         significant_genes = set()
         for j in range(len(topk_eigenvectors)):
             topk_genes_args = np.argsort(-np.abs(topk_eigenvectors[j]))[:topk_gene] # based on |c| if complex
             significant_genes.update(topk_genes_args)
-        print('significant genes:', significant_genes)
+        # print('significant genes:', significant_genes)
         adata.uns['top_eig_genes'][i] = list(significant_genes)
 
     top_eig_genes = adata.uns['top_eig_genes']
