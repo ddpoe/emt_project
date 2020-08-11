@@ -261,7 +261,7 @@ def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_mod
     return sample_mses, is_center_neighbors, min_id
 
 
-def analyze_group_jacobian(adata, jacobs, topk_eigen=4, topk_gene=10, pca_model=None, group_name='someGroup', top_genes_for_plot=50):
+def analyze_group_jacobian(adata, jacobs, topk_eigen=4, topk_gene=100, pca_model=None, group_name='someGroup', top_genes_for_plot=50):
     '''
     analyze one group's jacob and gene
     '''
@@ -291,17 +291,15 @@ def analyze_group_jacobian(adata, jacobs, topk_eigen=4, topk_gene=10, pca_model=
 
     top_eig_genes = adata.uns['top_eig_genes']
     gene_names = adata.var_names
-    count_map = {}
+    count_map = {name:0 for name in gene_names}
     for i in range(len(top_eig_genes)):
         for j in range(len(top_eig_genes[i])):
             name = gene_names[top_eig_genes[i][j]]
-            if not (name in count_map):
-                count_map[name] = 0
             count_map[name] += 1
         items = list(count_map.items())
     # choose topk genes to draw
     items = np.array(sorted(items, key=lambda x: x[1], reverse=True))
-    print('top eigen genes:', items[:top_genes_for_plot])
+    # print('top eigen genes:', items[:top_genes_for_plot])
 
     df = pd.DataFrame(data=items[:, 1], index=items[:, 0])
     df.to_csv(os.path.join('./figures', group_name + '_geneCountInMaxEigen.csv'))

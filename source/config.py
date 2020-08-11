@@ -1,9 +1,10 @@
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--only-whole-data', type=bool, help='do MAR in whole data only, or in each cluster as well?')
-parser.add_argument('--use-pca', type=bool, help='use pca in each cluster or not')
+parser.add_argument('--only-whole-data', help='do MAR in whole data only, or in each cluster as well?', default=False, action='store_true')
+parser.add_argument('--use-pca',
+                    help='use pca in each cluster or not', default=False, action='store_true')
 parser.add_argument('--include-a549-days', help='a list of days', nargs='*', default='all')
-parser.add_argument('--use-emt-gene-filter', type=bool, help='')
+parser.add_argument('--use-emt-gene-filter', help='', default=False, action='store_true')
 parser.add_argument('--selected-genes-jacobian', type=str, help='', default=[], nargs='*')
 parser.add_argument('--MAR-neighbor-num', type=int, help='')
 parser.add_argument('--use-dataset', type=str, help='', choices=['a549', 'pancreas', 'cook'])
