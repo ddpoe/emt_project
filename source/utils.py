@@ -8,6 +8,7 @@ from scipy.spatial import distance_matrix
 from collections import Counter
 import re
 from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from sklearn import metrics
 import pandas as pd
 import scvelo as scv

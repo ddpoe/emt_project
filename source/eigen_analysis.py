@@ -70,12 +70,12 @@ def analyze_specific_cluster(adata, indices,
     for i in range(N):
         argsorted = np.argsort(dist[i, :])
         total_error = np.sum(errors[argsorted[:num_neighbors]])
-        neighbor_errors.append(total_error)
+        neighbor_errors.append(total_error/num_neighbors)
 
-    cluster_data.obs['whole_cluster_neighbor_errors'] = neighbor_errors
+    cluster_data.obs['whole_cluster_avg_neighbor_errors'] = neighbor_errors
     suptitle = 'cluster:' + str(cluster_label)
     scv.pl.scatter(cluster_data,
-                   color=['whole_cluster_neighbor_errors', 'vel_norms'],
+                   color=['whole_cluster_avg_neighbor_errors', 'vel_norms'],
                    save='cluster%s_centroids.png' % str(cluster_label),
                    show=False)
 
@@ -84,7 +84,7 @@ def analyze_specific_cluster(adata, indices,
         scv.pl.velocity_embedding_stream(
             cluster_data,
             color=[
-                'whole_cluster_neighbor_errors',
+                'whole_cluster_avg_neighbor_errors',
                 'vel_norms'],
             save='cluster%s_vel_centroids.png' %
             str(cluster_label),
@@ -195,7 +195,7 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None, pca_model=No
     data_mat = data_mat[:, :num_feature]
     sub_labels = labels[:, :num_feature]
     # sub_labels = labels
-    mses, r2s, max_eigenvals, feature_norms, bias_norms, jacobs = [], [], [], [], [], []
+    mses, r2s, max_eigenvals, feature_norms, bias_norms, jacobs, models = [], [], [], [], [], [], []
     print('dist shape:',  dist_mat.shape)
     for i in range(len(data_mat)):
         neighbors = np.argsort(dist_mat[i, :])[:neighbor_num]        
@@ -221,7 +221,8 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None, pca_model=No
         bias_norm = np.linalg.norm(model.intercept_)
         bias_norms.append(bias_norm)
         jacobs.append(model.coef_)
-    return mses, r2s, max_eigenvals, feature_norms, bias_norms, jacobs
+        models.append(model)
+    return mses, r2s, max_eigenvals, feature_norms, bias_norms, jacobs, models
 
 
 def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_model=None, center=None):
@@ -261,7 +262,7 @@ def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_mod
     return sample_mses, is_center_neighbors, min_id
 
 
-def analyze_group_jacobian(adata, jacobs, topk_eigen=4, topk_gene=100, pca_model=None, group_name='someGroup', top_genes_for_plot=50):
+def analyze_group_jacobian(adata, jacobs, topk_eigen=4, topk_gene=100, pca_model=None, group_name='someGroup', top_genes_for_plot=50, gene_count_df=None):
     '''
     analyze one group's jacob and gene
     '''
@@ -301,5 +302,40 @@ def analyze_group_jacobian(adata, jacobs, topk_eigen=4, topk_gene=100, pca_model
     items = np.array(sorted(items, key=lambda x: x[1], reverse=True))
     # print('top eigen genes:', items[:top_genes_for_plot])
 
-    df = pd.DataFrame(data=items[:, 1], index=items[:, 0])
-    df.to_csv(os.path.join('./figures', group_name + '_geneCountInMaxEigen.csv'))
+    if gene_count_df is None:
+        df = pd.DataFrame(data=items[:, 1], index=items[:, 0])
+        df.to_csv(os.path.join('./figures', group_name + '_geneCountInMaxEigenAnalysis.csv'))
+    else:
+        gene_count_df[group_name] = pd.Series(data=items[:, 1], index=items[:, 0])
+        gene_count_df.to_csv(os.path.join('./', group_name + 'geneCountInMaxEigenAnalysis.csv'))
+
+
+def analyze_MAR_biases(adata, models):
+    X = adata.X
+    biases_v = []
+    biases_e = []
+    for sample_i in range(len(adata)):
+        x = X[sample_i]
+        bias = models[sample_i].intercept_
+        A = models[sample_i].coef_
+        biases_v.append(bias)
+        bias_e, residuals, rank, s = numpy.linalg.lstsq(A, bias)
+        biases_e.append(bias_e)
+
+    # note only 2 dim of bias_v will be drawn: need to transform
+    biases_v_emb = PCA(n_components=2,
+                       random_state=config.random_state).fit_transform(biases_v)
+    biases_v_emb_tsne = TSNE(n_components=2,
+                       random_state=config.random_state).fit_transform(biases_v)    
+    scv.pl.velocity_embedding_stream(adata,
+                                     V = biases_v_emb,
+                                     save='bias_v_pca_stream.png', show=False)
+    scv.pl.velocity_embedding_stream(adata,
+                                     V = biases_v_emb_tsne,
+                                     save='bias_v_tsne_stream.png', show=False)
+    biases_e_emb = PCA(n_components=2,
+                       random_state=config.random_state).fit_transform(biases_e)
+    scv.pl.velocity_embedding_stream(adata,
+                                     X = biases_e_emb,
+                                     V = biases_v_emb,
+                                     save='bias_e_stream.png', show=False)

@@ -9,8 +9,9 @@ parser.add_argument('--selected-genes-jacobian', type=str, help='', default=[], 
 parser.add_argument('--MAR-neighbor-num', type=int, help='')
 parser.add_argument('--use-dataset', type=str, help='', choices=['a549', 'pancreas', 'cook'])
 parser.add_argument('--lasso-alpha', type=float, help='', default=0.0001)
+parser.add_argument('--result-dir', type=str, help='', default='./results')
 args = parser.parse_args()
-print('arguments:', args)
+
 only_whole_data = args.only_whole_data
 use_pca = args.use_pca
 use_emt_gene_filter = args.use_emt_gene_filter
@@ -19,7 +20,8 @@ selected_genes_jacobian = args.selected_genes_jacobian
 MAR_neighbor_num = args.MAR_neighbor_num
 use_dataset = args.use_dataset
 lasso_alpha = args.lasso_alpha
-
+result_dir = args.result_dir
+random_state = 7
 # only_whole_data = False # 
 # use_pca = True
 # use_emt_gene_filter = False
@@ -35,9 +37,11 @@ two_gene_graph_dir = './figures/two_gene_vector_field'
 # calculate_velocity_with_all_gene = True
 def gen_config_folder_name():
     arg_strs = ['dataset=' + args.use_dataset,
-                'include-a549-days=' + str(args.include_a549_days),
                 'use-emt-gene-filter=' + str(args.use_emt_gene_filter),
                 'MAR-neighbor-num=' + str(args.MAR_neighbor_num),
                 'lasso-alpha=' + str(args.lasso_alpha)]
+
+    if use_dataset == 'a549':
+        arg_strs.append('include-a549-days=' + str(args.include_a549_days))
     name = '_'.join(arg_strs)
     return name
