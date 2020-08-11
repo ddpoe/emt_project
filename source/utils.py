@@ -25,6 +25,7 @@ import sklearn.metrics
 import sklearn.model_selection
 import config
 import os
+import sys
 import scipy.spatial.distance
 
 def calc_distance_matrix(data):

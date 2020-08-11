@@ -33,3 +33,11 @@ two_gene_graph_dir = './figures/two_gene_vector_field'
 # use_dataset = 'a549'
 # use_dataset = 'pancreas'
 # calculate_velocity_with_all_gene = True
+def gen_config_folder_name():
+    arg_strs = ['dataset=' + args.use_dataset,
+                'include-a549-days=' + str(args.include_a549_days),
+                'use-emt-gene-filter=' + str(args.use_emt_gene_filter),
+                'MAR-neighbor-num=' + str(args.MAR_neighbor_num),
+                'lasso-alpha=' + str(args.lasso_alpha)]
+    name = '_'.join(arg_strs)
+    return name

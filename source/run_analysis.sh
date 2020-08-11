@@ -1,3 +1,5 @@
+eval "$(conda shell.bash hook)"
+conda activate emt_proj
 rm -rf figures
 python main.py\
        --only-whole-data\

@@ -14,8 +14,13 @@ def run_graphlasso(X, lm=0.001, prefix=''):
 
 
 def main():
-    loom_data_path = '../data/a549_tgfb1.loom'
-    meta_path = '../data/a549_tgfb1_meta.csv'
+    working_dir = config.gen_config_folder_name()
+    make_dir(working_dir, abort=True)
+    os.chdir(working_dir)
+    sys.stdout = open(os.path.join('output.txt'), 'w')
+
+    loom_data_path = '../../data/a549_tgfb1.loom'
+    meta_path = '../../data/a549_tgfb1_meta.csv'
     
     adata = None
     if not config.use_dataset == 'pancreas':
@@ -25,7 +30,7 @@ def main():
     else:
         adata = scv.datasets.pancreas()
 
-    emt_gene_path = '../data/gene_lists/emt_genes_weikang.txt'
+    emt_gene_path = '../../data/gene_lists/emt_genes_weikang.txt'
     emt_genes = read_list(emt_gene_path)
 
     '''
