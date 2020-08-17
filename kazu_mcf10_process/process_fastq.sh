@@ -1,5 +1,7 @@
+# convert bam to fastq
+./bamtofastq-1.2.0 possorted_genome_bam.bam ./exp1/
+# start processing fastq
 conda create --name kb_env python=3.7
-
 pip install kb-python
 conda install -c bioconda bustools
 
