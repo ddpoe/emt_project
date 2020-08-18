@@ -7,10 +7,17 @@ parser.add_argument('--include-a549-days', help='a list of days', nargs='*', def
 parser.add_argument('--use-emt-gene-filter', help='', default=False, action='store_true')
 parser.add_argument('--selected-genes-jacobian', type=str, help='', default=[], nargs='*')
 parser.add_argument('--MAR-neighbor-num', type=int, help='')
-parser.add_argument('--use-dataset', type=str, help='', choices=['a549', 'pancreas', 'cook'])
+parser.add_argument('--use-dataset', type=str, help='', choices=['a549', 'pancreas', 'cook', 'kazu_mcf10a'])
 parser.add_argument('--lasso-alpha', type=float, help='', default=0.0001)
 parser.add_argument('--result-dir', type=str, help='', default='./results')
 args = parser.parse_args()
+
+emt_gene_path = '/net/dali/home/mscbio/ken67/emt_project/data/gene_lists/emt_genes_weikang.txt'
+a549_loom_data_path = '/net/dali/home/mscbio/ken67/emt_project/data/a549_tgfb1.loom'
+a549_meta_path = '/net/dali/home/mscbio/ken67/emt_project/data/a549_tgfb1_meta.csv'
+kazu_loom_data_path = '/net/dali/home/mscbio/ken67/emt_project/data/MCF10A_exp1/possorted_genome_bam_RIG79.loom'
+kazu_cbc_gbc_mapping_path = '/net/dali/home/mscbio/ken67/emt_project/data/MCF10A_exp1/CBC_GBC_summary.txt'
+kazu_gbc_info_path = '/net/dali/home/mscbio/ken67/emt_project/data/MCF10A_exp1/gbc_dosage_info.txt'
 
 only_whole_data = args.only_whole_data
 use_pca = args.use_pca

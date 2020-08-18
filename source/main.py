@@ -20,19 +20,21 @@ def main():
     sys.stdout = open(os.path.join('output.txt'), 'w')
     print('arguments:', config.args)
     
-    loom_data_path = '../../../data/a549_tgfb1.loom'
-    meta_path = '../../../data/a549_tgfb1_meta.csv'
-    
     adata = None
-    if not config.use_dataset == 'pancreas':
-        adata = scv.read_loom(loom_data_path) # adata=dyn.read_loom(loom_data_path)
-        meta = pd.read_csv(meta_path)
+    if config.use_dataset == 'a549':
+        adata = scv.read_loom(config.a549_loom_data_path) # adata=dyn.read_loom(loom_data_path)
+        meta = pd.read_csv(config.a549_meta_path)
         # gen_all_gene_pair_vector_field(adata, config.selected_genes_jacobian)
-    else:
+    elif config.use_dataset == 'pancreas':
         adata = scv.datasets.pancreas()
-
-    emt_gene_path = '../../../data/gene_lists/emt_genes_weikang.txt'
-    emt_genes = read_list(emt_gene_path)
+        adata.obs['Time'] = np.zeros(len(adata), dtype=np.int) # No time data
+    elif config.use_dataset == 'kazu_mcf10a':
+        adata = scv.read_loom(config.kazu_loom_data_path)
+        # add concentration information
+        adata = process_kazu_loom_data(adata, config.kazu_cbc_gbc_mapping_path, config.kazu_gbc_info_path)
+        adata.obs['Time'] = np.zeros(len(adata), dtype=np.int) # No time data
+        
+    emt_genes = read_list(config.emt_gene_path)
 
     '''
     filter by emt genes?
@@ -41,7 +43,7 @@ def main():
         print('filtering genes by only using known emt genes')
         intersection_genes = set(adata.var_names).intersection(emt_genes)
         adata = adata[:, list(intersection_genes)]
-
+        adata = filter_a549_MET_samples(adata, meta, include_a549_days=config.include_a549_days)
         print('intersection genes:', intersection_genes)
 
     # n_top_genes = 50  # not 2000 because of # observations
@@ -62,10 +64,6 @@ def main():
     scv.tl.terminal_states(adata)
     scv.pl.velocity_embedding_stream(adata, save='vel_stream.png', show=False)
 
-    if config.use_dataset == 'a549':
-        adata = filter_a549_MET_samples(adata, meta, include_a549_days=config.include_a549_days)
-    else:
-        adata.obs['Time'] = np.zeros(len(adata), dtype=np.int)
         
     root_cells = adata.obs['root_cells']
     end_cells = adata.obs['end_points']
@@ -117,13 +115,16 @@ def main():
                 knee = 4
         elif config.use_dataset == 'pancreas':
             knee = 7
+        elif config.use_dataset == 'kazu_mcf10a':
+            knee = 8
+            
         print('knee of kmeans graph:', knee)
         kmeans = KMeans(n_clusters=knee, random_state=0).fit(count_matrix)
         cluster_centers = kmeans.cluster_centers_
         kmeans_labels = kmeans.labels_
         adata.obs['kmeans_labels'] = kmeans_labels
         adata.obs['Clusters'] = kmeans_labels
-        print('computing  MAR')
+        print('computing  MAR......')
         # scv_labels is kmeans label set earlier
         scv_labels = adata.obs['Clusters']
         labels = scv_labels
@@ -289,7 +290,16 @@ def main():
                 pass
             else:
                 adata.obs['cluster_squared_error'] = errors
-                
+
+        whole_neighbor_obs = ['whole_neighbor_MAR_r2',
+                              'whole_neighbor_MAR_mse',
+                              'whole_neighbor_bias_norms',
+                              'whole_neighbor_avg_vel_norms',
+                              'whole_neighbor_max_eigenVal_real',
+                              'whole_data_MAR_squared_error']
+        if config.use_dataset == 'kazu_mcf10a':
+            whole_neighbor_obs += ['dosage']
+            
         if not only_whole_data:
             scv.pl.scatter(
                 adata,
@@ -303,20 +313,15 @@ def main():
                 show=False)
             scv.pl.velocity_embedding_stream(
                 adata,
-                color=[
-                    'whole_neighbor_MAR_r2',
-                    'whole_neighbor_MAR_mse',
-                    'whole_neighbor_max_eigenVal_real',
-                    'whole_data_MAR_squared_error',
-                    'clusters_neighbor_MAR_r2',
-                    'clusters_neighbor_MAR_mse',
-                    'clusters_centroid_neighborhood_sample_mses',
-                    'is_centroid_neighbor_indicator',
-                    'Clusters',
-                    'vel_norms'],
-                colorbar=True,
-                save='neighbor_MAR_stats.png',
-                show=False)
+                color=whole_neighbor_obs +  ['clusters_neighbor_MAR_r2',
+                                             'clusters_neighbor_MAR_mse',
+                                             'clusters_centroid_neighborhood_sample_mses',
+                                            'is_centroid_neighbor_indicator',
+                                             'Clusters',
+                                             'vel_norms'],
+                       colorbar=True,
+                       save='neighbor_MAR_stats.png',
+                       show=False)
 
         else:
             scv.pl.scatter(
@@ -329,16 +334,9 @@ def main():
                 save='error_root_end_points.png',
                 show=False)
             scv.pl.velocity_embedding_stream(adata,
-                                             color=[
-                                                 'whole_neighbor_MAR_r2',
-                                                 'whole_neighbor_MAR_mse',
-                                                 'whole_neighbor_bias_norms',
-                                                 'whole_neighbor_avg_vel_norms',
-                                                 'whole_neighbor_max_eigenVal_real',
-                                                 'whole_data_MAR_squared_error',
-                                                 'Time',
-                                                 'Clusters',
-                                                 'vel_norms'],
+                                             color=whole_neighbor_obs + ['Time',
+                                                                          'Clusters',
+                                                                          'vel_norms'],
                                              save='neighbor_MAR_stats.png',
                                              show=False)
         scv.pl.scatter(

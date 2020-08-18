@@ -81,4 +81,55 @@ def make_dir(path, abort=True):
         os.makedirs(path)
         return True
 
-    
+
+def read_CBC_GBC_mapping(path):
+    def get_mapping(frame):
+        res = {}
+        for i in range(len(frame)):
+            cbc = frame['CBC'][i]
+            gbc = frame['GBC'][i]
+            res[cbc] = gbc
+        return res
+    frame = pd.read_csv(path, delimiter='\t')
+    return get_mapping(frame)
+
+
+def read_gbc2dosage_mapping(path):
+    def get_mapping(frame):
+        res = {}
+        for i in range(len(frame)):
+            gbc = frame['Name'][i]
+            dosage = float(frame['TGFb'][i])
+            res[gbc] = dosage
+        return res
+    frame = pd.read_csv(path, delimiter='\t')
+    return get_mapping(frame)
+
+
+def process_kazu_loom_data(adata, cbc2gbc_path, gbc_info_path):
+    '''
+    format kazu loom data: 
+    1) modify observations name 
+    2) add dosage information 
+    3) discard any samples without meta dosage info
+    '''
+    adata_cbc_codes = [x[x.find(':')+1:] for x in list(adata.obs_names)]
+    adata.obs_names = adata_cbc_codes
+    adata.obs['dosage'] = np.zeros(len(adata), dtype=np.float)
+    cbc2gbc = read_CBC_GBC_mapping(cbc2gbc_path)
+    gbc2dosage = read_gbc2dosage_mapping(gbc_info_path)
+    is_cbc_in_mapping = []
+    no_meta_info_count = 0
+    for cbc in adata_cbc_codes:
+        if (not (cbc in cbc2gbc)) or (not (cbc2gbc[cbc] in gbc2dosage)):
+            is_cbc_in_mapping.append(False)
+            no_meta_info_count += 1
+            continue
+        else:
+            is_cbc_in_mapping.append(True)
+            gbc = cbc2gbc[cbc]
+            adata.obs['dosage'][cbc] = gbc2dosage[gbc]
+    adata = adata[is_cbc_in_mapping]
+    print('total observation discarded due to no gbc/cbc info:', no_meta_info_count)
+    print('new #observations after processing kazu loom data:', len(adata))
+    return adata
