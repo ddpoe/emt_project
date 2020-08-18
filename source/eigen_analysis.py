@@ -173,7 +173,9 @@ def filter_a549_MET_samples(adata, meta, include_a549_days=config.include_a549_d
     # no _rm in time means EMT
     if include_a549_days != 'all':
         is_day0 = np.array([time in include_a549_days for time in time_raw])
-        adata = adata[is_day0]        
+        adata = adata[is_day0]
+        if len(include_a549_days) == 1:
+            adata.obs['Time'] = 'r' # prevent SCVELO plot bug
     else:
         is_EMT = np.array([time.find('_rm') == -1 for time in time_raw])
         adata = adata[is_EMT]
@@ -297,7 +299,7 @@ def analyze_group_jacobian(adata, jacobs, topk_eigen=4, topk_gene=100, pca_model
         for j in range(len(top_eig_genes[i])):
             name = gene_names[top_eig_genes[i][j]]
             count_map[name] += 1
-        items = list(count_map.items())
+    items = list(count_map.items())
     # choose topk genes to draw
     items = np.array(sorted(items, key=lambda x: x[1], reverse=True))
     # print('top eigen genes:', items[:top_genes_for_plot])
@@ -339,3 +341,7 @@ def analyze_MAR_biases(adata, models):
                                      X = biases_e_emb,
                                      V = biases_v_emb,
                                      save='bias_e_stream.png', show=False)
+    # plt.close()
+    # plt.streamplot(biases_e_emb[0], biases_e_emb[1], biases_v_emb[0], biases_v_emb[1])
+    # plt.savefig('./figures/matplotlib_bias_e_stream.png')
+    # plt.close()

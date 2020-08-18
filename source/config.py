@@ -12,12 +12,12 @@ parser.add_argument('--lasso-alpha', type=float, help='', default=0.0001)
 parser.add_argument('--result-dir', type=str, help='', default='./results')
 args = parser.parse_args()
 
-emt_gene_path = '/net/dali/home/mscbio/ken67/emt_project/data/gene_lists/emt_genes_weikang.txt'
-a549_loom_data_path = '/net/dali/home/mscbio/ken67/emt_project/data/a549_tgfb1.loom'
-a549_meta_path = '/net/dali/home/mscbio/ken67/emt_project/data/a549_tgfb1_meta.csv'
-kazu_loom_data_path = '/net/dali/home/mscbio/ken67/emt_project/data/MCF10A_exp1/possorted_genome_bam_RIG79.loom'
-kazu_cbc_gbc_mapping_path = '/net/dali/home/mscbio/ken67/emt_project/data/MCF10A_exp1/CBC_GBC_summary.txt'
-kazu_gbc_info_path = '/net/dali/home/mscbio/ken67/emt_project/data/MCF10A_exp1/gbc_dosage_info.txt'
+emt_gene_path = '/home/ke/emt_project/data/gene_lists/emt_genes_weikang.txt'
+a549_loom_data_path = '/home/ke/emt_project/data/a549_tgfb1.loom'
+a549_meta_path = '/home/ke/emt_project/data/a549_tgfb1_meta.csv'
+kazu_loom_data_path = '/home/ke/emt_project/data/MCF10A_exp1/possorted_genome_bam_RIG79.loom'
+kazu_cbc_gbc_mapping_path = '/home/ke/emt_project/data/MCF10A_exp1/CBC_GBC_summary.txt'
+kazu_gbc_info_path = '/home/ke/emt_project/data/MCF10A_exp1/gbc_dosage_info.txt'
 
 only_whole_data = args.only_whole_data
 use_pca = args.use_pca

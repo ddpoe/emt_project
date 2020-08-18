@@ -150,9 +150,11 @@ def main():
         adata.obs['clusters_neighbor_MAR_r2'] = np.zeros(len(adata))
         adata.obs['whole_neighbor_MAR_mse'] = np.zeros(len(adata))
         adata.obs['whole_neighbor_MAR_r2'] = np.zeros(len(adata))
+        adata.obs['whole_neighbor_MAR_is_eigenstable'] = np.zeros(len(adata), dtype=np.float)
         adata.obs['whole_neighbor_bias_norms'] = np.zeros(len(adata))
         adata.obs['whole_neighbor_max_eigenVal_real'] = np.zeros(len(adata))
         adata.obs['whole_neighbor_avg_vel_norms'] = np.zeros(len(adata))
+        
         
         adata.obs['clusters_centroid_neighborhood_sample_mses'] = np.full(len(adata), -1)
         adata.obs['is_centroid_neighbor_indicator'] = np.zeros(len(adata), dtype=np.int)
@@ -233,33 +235,30 @@ def main():
                 adata.obs['clusters_neighbor_MAR_r2'][indices] = r2s
 
                 adata.obs['clusters_centroid_neighborhood_sample_mses'][indices[is_centroid_neighbor_indicator]] = cluster_centroid_sample_mses
-
-                # debug check
-                # print(indices)
-                # print(adata.obs['clusters_centroid_neighborhood_sample_mses'][indices[is_centroid_neighbor_indicator]].shape)
-                # print(is_centroid_neighbor_indicator.shape, cluster_centroid_sample_mses.shape)
-                # print(cluster_centroid_sample_mses)
-                # print(is_centroid_neighbor_indicator)                
+                
                 adata.obs['is_centroid_neighbor_indicator'][indices[is_centroid_neighbor_indicator]] = label
 
             else:
                 adata.obs['whole_neighbor_MAR_mse'][indices] = mses
                 adata.obs['whole_neighbor_MAR_r2'][indices] = r2s
                 adata.obs['whole_neighbor_max_eigenVal_real'][indices] = max_eigenval_reals
+                adata.obs['whole_neighbor_MAR_is_eigenstable'][indices[np.array(max_eigenval_reals)<=0]] = 1
                 adata.obs['whole_neighbor_avg_vel_norms'] = feature_norms
                 adata.obs['whole_neighbor_bias_norms'] = bias_norms
                 adata.obs['whole_data_centroid_sample_errors'][indices[is_centroid_neighbor_indicator]] = cluster_centroid_sample_mses
-                adata.obs['is_whole_centroid_neighbor'][indices[is_centroid_neighbor_indicator]] = 1
-                adata.obs['is_whole_centroid_neighbor'][indices[closest_sample_id_in_indices]] = 3
                 adata.uns['whole_neighbor_MAR_models'] = MAR_models
                 for i in range(len(indices)):
                     index = indices[i]
                     adata.uns['neighbor_jacobs'][index] = jacobs[i]
                 analyze_MAR_biases(adata, MAR_models)
+            
+                # 1 centroid (mean analysis)
+                adata.obs['is_whole_centroid_neighbor'][indices[is_centroid_neighbor_indicator]] = 1
+                adata.obs['is_whole_centroid_neighbor'][indices[closest_sample_id_in_indices]] = 3 # the only centroid (mean) sample
                 
                 
             '''
-            whole cluster MAR
+            one entire cluster MAR
             '''
             model = Lasso(alpha=config.lasso_alpha).fit(label_count_matrix, label_velocities)
             predicted_velocities = model.predict(label_count_matrix)
@@ -296,6 +295,7 @@ def main():
                               'whole_neighbor_bias_norms',
                               'whole_neighbor_avg_vel_norms',
                               'whole_neighbor_max_eigenVal_real',
+                              'whole_neighbor_MAR_is_eigenstable',
                               'whole_data_MAR_squared_error']
         if config.use_dataset == 'kazu_mcf10a':
             whole_neighbor_obs += ['dosage']
@@ -316,7 +316,7 @@ def main():
                 color=whole_neighbor_obs +  ['clusters_neighbor_MAR_r2',
                                              'clusters_neighbor_MAR_mse',
                                              'clusters_centroid_neighborhood_sample_mses',
-                                            'is_centroid_neighbor_indicator',
+                                             'is_centroid_neighbor_indicator',
                                              'Clusters',
                                              'vel_norms'],
                        colorbar=True,
