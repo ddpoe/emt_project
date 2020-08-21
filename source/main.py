@@ -17,6 +17,7 @@ def main():
     working_dir = os.path.join(config.result_dir, config.gen_config_folder_name())
     make_dir(working_dir, abort=True)
     os.chdir(working_dir)
+    make_dir('./figures', abort=False)
     sys.stdout = open(os.path.join('output.txt'), 'w')
     print('arguments:', config.args)
     
@@ -128,8 +129,8 @@ def main():
         adata.obs['Clusters'] = kmeans_labels
         print('computing  MAR......')
         # scv_labels is kmeans label set earlier
-        scv_labels = adata.obs['Clusters']
-        labels = scv_labels
+        # scv_labels = adata.obs['Clusters']
+        labels = adata.obs['Clusters']
         label_set = set(labels)
         errors = np.zeros(len(labels))        
 
@@ -155,7 +156,7 @@ def main():
         adata.obs['whole_neighbor_MAR_is_eigenstable'] = np.zeros(len(adata), dtype=np.float)
         adata.obs['whole_neighbor_bias_norms'] = np.zeros(len(adata))
         adata.obs['whole_neighbor_max_eigenVal_real'] = np.zeros(len(adata))
-        adata.obs['whole_neighbor_avg_vel_norms'] = np.zeros(len(adata))
+        adata.obs['whole_neighbor_avg_feature_norms'] = np.zeros(len(adata))
         
         
         adata.obs['clusters_centroid_neighborhood_sample_mses'] = np.full(len(adata), -1)
@@ -245,7 +246,7 @@ def main():
                 adata.obs['whole_neighbor_MAR_r2'][indices] = r2s
                 adata.obs['whole_neighbor_max_eigenVal_real'][indices] = max_eigenval_reals
                 adata.obs['whole_neighbor_MAR_is_eigenstable'][indices[np.array(max_eigenval_reals)<=0]] = 1
-                adata.obs['whole_neighbor_avg_vel_norms'] = feature_norms
+                adata.obs['whole_neighbor_avg_feature_norms'] = feature_norms
                 adata.obs['whole_neighbor_bias_norms'] = bias_norms
                 adata.obs['whole_data_centroid_sample_errors'][indices[is_centroid_neighbor_indicator]] = cluster_centroid_sample_mses
                 adata.uns['whole_neighbor_MAR_models'] = MAR_models
@@ -294,7 +295,11 @@ def main():
             
         gen_analysis_figures(adata, 'allSamples')
         eigenstable_subset = adata[adata.obs['whole_neighbor_MAR_is_eigenstable'] > 0.5]
-        gen_analysis_figures(eigenstable_subset, 'eigenstable')
+        try:
+            gen_analysis_figures(eigenstable_subset, 'eigenstable')
+        except Exception as e:
+            print('failed to generate eigenstable figures probably due to #samples')
+            print(e)
         # centroid part can be removed later
         # scv.pl.scatter(
         #     adata,

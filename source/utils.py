@@ -187,10 +187,11 @@ def gen_analysis_figures(adata, prefix):
     whole_neighbor_obs = ['whole_neighbor_MAR_r2',
                           'whole_neighbor_MAR_mse',
                           'whole_neighbor_bias_norms',
-                          'whole_neighbor_avg_vel_norms',
+                          'whole_neighbor_avg_feature_norms',
                           'whole_neighbor_max_eigenVal_real',
                           'whole_neighbor_MAR_is_eigenstable',
                           'whole_data_MAR_squared_error']
+    selected_obs0 = ['whole_neighbor_max_eigenVal_real', 'whole_neighbor_MAR_is_eigenstable', 'vel_norms']
     if config.use_dataset == 'kazu_mcf10a':
         whole_neighbor_obs += ['dosage']
     # debug
@@ -220,18 +221,23 @@ def gen_analysis_figures(adata, prefix):
             show=False)
 
     else:
-        scv.pl.scatter(
-            adata,
-            color=[
-                'root_cells',
-                'end_points',
-                'whole_data_MAR_squared_error',
-                'Clusters'],
-            save=prefix + '_error_root_end_points.png',
-            show=False)
+        scv.pl.velocity_embedding_stream(adata,
+                                         color=[
+                                             'root_cells',
+                                             'end_points',
+                                             'whole_data_MAR_squared_error',
+                                             'Clusters'],
+                                         save=prefix + '_error_root_end_points.png',
+                                         show=False)
+        
         scv.pl.velocity_embedding_stream(adata,
                                          color=whole_neighbor_obs + ['Time',
                                                                      'Clusters',
                                                                      'vel_norms'],
                                          save=prefix + '_neighbor_MAR_stats.png',
-                                         show=False)    
+                                         show=False)
+
+        scv.pl.velocity_embedding_stream(adata,
+                                         color=selected_obs0,
+                                         save=prefix + '_eigenVal_specific_analysis.png',
+                                         show=False)

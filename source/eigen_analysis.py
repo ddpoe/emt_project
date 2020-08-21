@@ -151,36 +151,7 @@ def analyze_adata_jacobian_genes(adata, jacob, selected_genes, emt_genes=None, t
         print('top inhib/exhibit genes coefs:', row_coef[args[:topk]])        
         print('Whether top genes in emt gene list (1-yes, 0-no)', is_in_emt)
         print('number of top5 genes in known emt list:', sum(is_in_emt))
-        print('########################################')
-
-        
-def filter_a549_MET_samples(adata, meta, include_a549_days=config.include_a549_days):
-    cell_ids = np.array(meta["Unnamed: 0"]) + 'x'
-    for ID in range(len(cell_ids)):
-        # This is needed to make the cell ids have the same syntax as the loom
-        # files
-        cell_ids[ID] = re.sub('x', "x-", cell_ids[ID], count=1)
-        cell_ids[ID] = re.sub('_', ":", cell_ids[ID])
-
-    meta['Unnamed: 0'] = cell_ids
-    cells = meta['Unnamed: 0'].to_numpy()
-    # time_raw = [meta['Time'][cells==cell][cell] for cell in adata.obs_names]
-    time_raw = np.array([[meta['Time'][np.squeeze(
-        np.argwhere(cells == cell))]][0] for cell in adata.obs_names])
-    adata.obs['Time'] = time_raw
-
-    time_raw = adata.obs['Time']
-    # no _rm in time means EMT
-    if include_a549_days != 'all':
-        is_day0 = np.array([time in include_a549_days for time in time_raw])
-        adata = adata[is_day0]
-        if len(include_a549_days) == 1:
-            adata.obs['Time'] = 'r' # prevent SCVELO plot bug
-    else:
-        is_EMT = np.array([time.find('_rm') == -1 for time in time_raw])
-        adata = adata[is_EMT]
-    return adata
-
+        print('########################################')        
     
 
 def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None, pca_model=None):
@@ -228,6 +199,10 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None, pca_model=No
 
 
 def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_model=None, center=None):
+    '''
+    legacy code for analyzing only 1 centroid for fast validating some possible points.
+    we can ignore this part.
+    '''
     if dist_mat is None:
         dist_mat = calc_distance_matrix(data_mat)
 
