@@ -10,8 +10,9 @@ parser.add_argument('--MAR-neighbor-num', type=int, help='')
 parser.add_argument('--use-dataset', type=str, help='', choices=['a549', 'pancreas', 'cook', 'kazu_mcf10a'])
 parser.add_argument('--lasso-alpha', type=float, help='', default=0.0001)
 parser.add_argument('--result-dir', type=str, help='', default='./results')
-args = parser.parse_args()
+parser.add_argument('--kazu-dosage-range', nargs=2, type=float, help='', default=[0, float('inf')])
 
+args = parser.parse_args()
 emt_gene_path = '/home/ke/emt_project/data/gene_lists/emt_genes_weikang.txt'
 a549_loom_data_path = '/home/ke/emt_project/data/a549_tgfb1.loom'
 a549_meta_path = '/home/ke/emt_project/data/a549_tgfb1_meta.csv'
@@ -28,6 +29,8 @@ MAR_neighbor_num = args.MAR_neighbor_num
 use_dataset = args.use_dataset
 lasso_alpha = args.lasso_alpha
 result_dir = args.result_dir
+kazu_dosage_range = args.kazu_dosage_range
+
 random_state = 7
 # only_whole_data = False # 
 # use_pca = True
@@ -50,5 +53,7 @@ def gen_config_folder_name():
 
     if use_dataset == 'a549':
         arg_strs.append('include-a549-days=' + str(args.include_a549_days))
+    elif use_dataset == 'kazu_mcf10a':
+        arg_strs.append('kazu-dosage-range=' + str(args.kazu_dosage_range))
     name = '_'.join(arg_strs)
     return name

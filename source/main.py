@@ -24,6 +24,7 @@ def main():
     if config.use_dataset == 'a549':
         adata = scv.read_loom(config.a549_loom_data_path) # adata=dyn.read_loom(loom_data_path)
         meta = pd.read_csv(config.a549_meta_path)
+        adata = filter_a549_MET_samples(adata, meta, include_a549_days=config.include_a549_days)
         # gen_all_gene_pair_vector_field(adata, config.selected_genes_jacobian)
     elif config.use_dataset == 'pancreas':
         adata = scv.datasets.pancreas()
@@ -31,7 +32,10 @@ def main():
     elif config.use_dataset == 'kazu_mcf10a':
         adata = scv.read_loom(config.kazu_loom_data_path)
         # add concentration information
-        adata = process_kazu_loom_data(adata, config.kazu_cbc_gbc_mapping_path, config.kazu_gbc_info_path)
+        adata = process_kazu_loom_data(adata,
+                                       config.kazu_cbc_gbc_mapping_path,
+                                       config.kazu_gbc_info_path,
+                                       config.kazu_dosage_range)
         adata.obs['Time'] = np.zeros(len(adata), dtype=np.int) # No time data
         
     emt_genes = read_list(config.emt_gene_path)
@@ -43,7 +47,6 @@ def main():
         print('filtering genes by only using known emt genes')
         intersection_genes = set(adata.var_names).intersection(emt_genes)
         adata = adata[:, list(intersection_genes)]
-        adata = filter_a549_MET_samples(adata, meta, include_a549_days=config.include_a549_days)
         print('intersection genes:', intersection_genes)
 
     # n_top_genes = 50  # not 2000 because of # observations
@@ -60,7 +63,6 @@ def main():
     scv.pp.moments(adata)
     scv.tl.velocity(adata)
     scv.tl.velocity_graph(adata)
-
     scv.tl.terminal_states(adata)
     scv.pl.velocity_embedding_stream(adata, save='vel_stream.png', show=False)
 
@@ -288,67 +290,24 @@ def main():
                 adata.obs['whole_data_MAR_squared_error'] = errors
                 pass
             else:
-                adata.obs['cluster_squared_error'] = errors
-
-        whole_neighbor_obs = ['whole_neighbor_MAR_r2',
-                              'whole_neighbor_MAR_mse',
-                              'whole_neighbor_bias_norms',
-                              'whole_neighbor_avg_vel_norms',
-                              'whole_neighbor_max_eigenVal_real',
-                              'whole_neighbor_MAR_is_eigenstable',
-                              'whole_data_MAR_squared_error']
-        if config.use_dataset == 'kazu_mcf10a':
-            whole_neighbor_obs += ['dosage']
+                adata.obs['cluster_squared_error'][indices] = errors
             
-        if not only_whole_data:
-            scv.pl.scatter(
-                adata,
-                color=[
-                    'root_cells',
-                    'end_points',
-                    'cluster_squared_error',
-                    'whole_data_MAR_squared_error',
-                    'Clusters'],
-                save='error_root_end_points.png',
-                show=False)
-            scv.pl.velocity_embedding_stream(
-                adata,
-                color=whole_neighbor_obs +  ['clusters_neighbor_MAR_r2',
-                                             'clusters_neighbor_MAR_mse',
-                                             'clusters_centroid_neighborhood_sample_mses',
-                                             'is_centroid_neighbor_indicator',
-                                             'Clusters',
-                                             'vel_norms'],
-                       colorbar=True,
-                       save='neighbor_MAR_stats.png',
-                       show=False)
+        gen_analysis_figures(adata, 'allSamples')
+        eigenstable_subset = adata[adata.obs['whole_neighbor_MAR_is_eigenstable'] > 0.5]
+        gen_analysis_figures(eigenstable_subset, 'eigenstable')
+        # centroid part can be removed later
+        # scv.pl.scatter(
+        #     adata,
+        #     color=[
+        #         'root_cells',
+        #         'end_points',
+        #         'whole_data_centroid_sample_errors',
+        #         'is_whole_centroid_neighbor',
+        #         'vel_norms'],
+        #     save='artificial_center_MAR.png',
+        #     show=False)
 
-        else:
-            scv.pl.scatter(
-                adata,
-                color=[
-                    'root_cells',
-                    'end_points',
-                    'whole_data_MAR_squared_error',
-                    'Clusters'],
-                save='error_root_end_points.png',
-                show=False)
-            scv.pl.velocity_embedding_stream(adata,
-                                             color=whole_neighbor_obs + ['Time',
-                                                                          'Clusters',
-                                                                          'vel_norms'],
-                                             save='neighbor_MAR_stats.png',
-                                             show=False)
-        scv.pl.scatter(
-            adata,
-            color=[
-                'root_cells',
-                'end_points',
-                'whole_data_centroid_sample_errors',
-                'is_whole_centroid_neighbor',
-                'vel_norms'],
-            save='artificial_center_MAR.png',
-            show=False)
+        # save all observation data
         adata.obs.to_csv('./figures/adata_obs.csv')
         
     def main_graphlasso():
