@@ -320,3 +320,67 @@ def analyze_MAR_biases(adata, models):
     # plt.streamplot(biases_e_emb[0], biases_e_emb[1], biases_v_emb[0], biases_v_emb[1])
     # plt.savefig('./figures/matplotlib_bias_e_stream.png')
     # plt.close()
+
+
+def analyze_pca(adata):
+    pca_model = PCA(n_components=None, # use all
+                    random_state=7).fit(adata.X.todense())
+    components = pca_model.components_
+    cum_var = np.cumsum(pca_model.explained_variance_ratio_)
+    xs = [i for i in range(len(cum_var))]
+    plt.close()
+    plt.hist(pca_model.explained_variance_ratio_)
+    title = 'pca_explained_variance_hist'
+    plt.title(title)
+    plt.savefig('./figures/' + title + '.png')
+    plt.close()
+    
+    plt.plot(xs, cum_var)
+    title = 'pca_cum_variance'
+    plt.title(title)
+    plt.savefig('./figures/' + title + '.png')    
+    plt.close()
+
+    plt.plot(xs, pca_model.explained_variance_ratio_)
+    plt.plot(xs, np.log(pca_model.singular_values_))
+    title = 'pca_indexVsExplainedRatioAndLogEigenVal'
+    plt.title(title)
+    plt.savefig('./figures/' + title + '.png')
+    plt.close()
+
+    plt.plot(xs, np.log(pca_model.explained_variance_ratio_))
+    plt.plot(xs, np.log(pca_model.singular_values_))
+    title = 'pca_indexVsLogExplainedRatioAndLogEigenVal'
+    plt.title(title)
+    plt.savefig('./figures/' + title + '.png')
+    plt.close()
+    
+    plt.plot(xs, pca_model.explained_variance_ratio_)
+    title = 'pca_indexVsExplainedRatio'
+    plt.title(title)
+    plt.savefig('./figures/' + title + '.png')
+    plt.close()
+
+    plt.plot(xs, np.log(pca_model.explained_variance_ratio_))
+    title = 'pca_indexVsLogExplainedRatio'
+    plt.title(title)
+    plt.savefig('./figures/' + title + '.png')
+    plt.close()
+    
+    plt.plot(xs, np.log(pca_model.singular_values_))
+    title = 'pca_indexVsLogSingularVal'
+    plt.title(title)
+    plt.savefig('./figures/' + title + '.png')
+    plt.close()
+    
+    plt.hist(pca_model.singular_values_)
+    title = 'pca_singularValue_hist'
+    plt.title(title)
+    plt.savefig('./figures/' + title + '.png')    
+    plt.close()
+    
+    plt.hist(np.log(pca_model.singular_values_))
+    title = 'pca_log_value_hist'
+    plt.title(title)
+    plt.savefig('./figures/' + title + '.png')        
+    plt.close()

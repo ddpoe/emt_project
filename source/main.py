@@ -82,7 +82,9 @@ def main():
         np.count_nonzero(velocities) /
         np.prod(
             velocities.shape))
-    
+    def main_PCA():
+        analyze_pca(adata)
+        
     def main_MAR(only_whole_data=False, use_pca=True):
         '''
         MAR main interface
@@ -217,6 +219,8 @@ def main():
                 label_velocities = velocities[indices, ...]
 
 
+            if label == whole_data_label:
+                analyze_pca(pca_model)
             '''
             Neighbor MAR part
             '''
@@ -327,8 +331,12 @@ def main():
         # run_graphlasso(count_matrix[:, :1000], prefix='count_matrix')
         print('velocities shape:', velocities.shape)
         run_graphlasso(velocities * 100, prefix='velocity')
-
-    main_MAR(only_whole_data=config.only_whole_data, use_pca=config.use_pca)
+    if config.mode == 'analyze_PCA':
+        main_PCA()
+    elif config.mode == 'analyze_MAR':
+        main_MAR(only_whole_data=config.only_whole_data, use_pca=config.use_pca)
+    else:
+        print("ERROR: mode not found")
     # main_graphlasso()
 
 

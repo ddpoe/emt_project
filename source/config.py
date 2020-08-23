@@ -11,6 +11,7 @@ parser.add_argument('--use-dataset', type=str, help='', choices=['a549', 'pancre
 parser.add_argument('--lasso-alpha', type=float, help='', default=0.0001)
 parser.add_argument('--result-dir', type=str, help='', default='./results')
 parser.add_argument('--kazu-dosage-range', nargs=2, type=float, help='', default=[0, float('inf')])
+parser.add_argument('--mode', type=str, help='', default='analyze_MAR', choices=['analyze_MAR', 'analyze_PCA'])
 
 args = parser.parse_args()
 emt_gene_path = '/home/ke/emt_project/data/gene_lists/emt_genes_weikang.txt'
@@ -20,6 +21,7 @@ kazu_loom_data_path = '/home/ke/emt_project/data/MCF10A_exp1/possorted_genome_ba
 kazu_cbc_gbc_mapping_path = '/home/ke/emt_project/data/MCF10A_exp1/CBC_GBC_summary.txt'
 kazu_gbc_info_path = '/home/ke/emt_project/data/MCF10A_exp1/gbc_dosage_info.txt'
 
+mode = args.mode
 only_whole_data = args.only_whole_data
 use_pca = args.use_pca
 use_emt_gene_filter = args.use_emt_gene_filter
@@ -46,7 +48,8 @@ two_gene_graph_dir = './figures/two_gene_vector_field'
 # use_dataset = 'pancreas'
 # calculate_velocity_with_all_gene = True
 def gen_config_folder_name():
-    arg_strs = ['dataset=' + args.use_dataset,
+    arg_strs = ['mode=' + args.mode.replace("_", '-'),
+                'dataset=' + args.use_dataset,
                 'use-emt-gene-filter=' + str(args.use_emt_gene_filter),
                 'MAR-neighbor-num=' + str(args.MAR_neighbor_num),
                 'lasso-alpha=' + str(args.lasso_alpha)]
