@@ -50,16 +50,16 @@ two_gene_graph_dir = './figures/two_gene_vector_field'
 # use_dataset = 'pancreas'
 # calculate_velocity_with_all_gene = True
 def gen_config_folder_name():
-    arg_strs = ['mode=' + args.mode.replace("_", '-'),
-                'dataset=' + args.use_dataset,
-                'use-emt-gene-filter=' + str(args.use_emt_gene_filter),
-                'MAR-neighbor-num=' + str(args.MAR_neighbor_num),
-                'lasso-alpha=' + str(args.lasso_alpha),
+    arg_strs = ['mode=' + config.mode.replace("_", '-'),
+                'dataset=' + config.use_dataset,
+                'use-emt-gene-filter=' + str(config.use_emt_gene_filter),
+                'MAR-neighbor-num=' + str(config.MAR_neighbor_num),
+                'lasso-alpha=' + str(config.lasso_alpha),
                 'perc=' + str(perc)]
 
     if use_dataset == 'a549':
-        arg_strs.append('include-a549-days=' + str(args.include_a549_days))
+        arg_strs.append('include-a549-days=' + str(config.include_a549_days))
     elif use_dataset == 'kazu_mcf10a':
-        arg_strs.append('kazu-dosage-range=' + str(args.kazu_dosage_range))
+        arg_strs.append('kazu-dosage-range=' + str(config.kazu_dosage_range))
     name = '_'.join(arg_strs)
     return name
