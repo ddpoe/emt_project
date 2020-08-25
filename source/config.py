@@ -12,6 +12,7 @@ parser.add_argument('--lasso-alpha', type=float, help='', default=0.0001)
 parser.add_argument('--result-dir', type=str, help='', default='./results')
 parser.add_argument('--kazu-dosage-range', nargs=2, type=float, help='', default=[0, float('inf')])
 parser.add_argument('--mode', type=str, help='', default='analyze_MAR', choices=['analyze_MAR', 'analyze_PCA'])
+parser.add_argument('--perc', type=int, help='', default=5)
 
 args = parser.parse_args()
 emt_gene_path = '/home/ke/emt_project/data/gene_lists/emt_genes_weikang.txt'
@@ -32,6 +33,7 @@ use_dataset = args.use_dataset
 lasso_alpha = args.lasso_alpha
 result_dir = args.result_dir
 kazu_dosage_range = args.kazu_dosage_range
+perc = args.perc
 
 random_state = 7
 # only_whole_data = False # 
@@ -52,7 +54,8 @@ def gen_config_folder_name():
                 'dataset=' + args.use_dataset,
                 'use-emt-gene-filter=' + str(args.use_emt_gene_filter),
                 'MAR-neighbor-num=' + str(args.MAR_neighbor_num),
-                'lasso-alpha=' + str(args.lasso_alpha)]
+                'lasso-alpha=' + str(args.lasso_alpha),
+                'perc=' + str(perc)]
 
     if use_dataset == 'a549':
         arg_strs.append('include-a549-days=' + str(args.include_a549_days))

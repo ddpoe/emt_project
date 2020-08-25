@@ -146,15 +146,49 @@ rm -rf results
 #        1>output.txt 2>&1&
 
 # PCA analysis
+# python main.py\
+#        --mode analyze_PCA\
+#        --use-pca\
+#        --use-dataset a549\
+#        --include-a549-days 0d\
+#        1>output.txt 2>&1&
+
+# python main.py\
+#        --mode analyze_PCA\
+#        --use-dataset kazu_mcf10a\
+#        --kazu-dosage-range 0 1\
+#        1>output.txt 2>&1&
+
+# day0 ones
 python main.py\
-       --mode analyze_PCA\
+       --only-whole-data\
        --use-pca\
+       --selected-genes-jacobian\
+       --MAR-neighbor-num 40\
        --use-dataset a549\
        --include-a549-days 0d\
+       --lasso-alpha 0.0001\
+       --perc 50\
        1>output.txt 2>&1&
 
 python main.py\
-       --mode analyze_PCA\
-       --use-dataset kazu_mcf10a\
-       --kazu-dosage-range 0 1\
+       --only-whole-data\
+       --use-pca\
+       --selected-genes-jacobian\
+       --MAR-neighbor-num 40\
+       --use-dataset a549\
+       --include-a549-days 0d\
+       --lasso-alpha 0.0001\
+       --perc 5\
+       1>output.txt 2>&1&
+
+python main.py\
+       --only-whole-data\
+       --use-pca\
+       --selected-genes-jacobian\
+       --MAR-neighbor-num 40\
+       --use-dataset a549\
+       --include-a549-days 0d\
+       --lasso-alpha 0.0001\
+       --perc 99\
        1>output.txt 2>&1&

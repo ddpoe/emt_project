@@ -190,7 +190,12 @@ def gen_analysis_figures(adata, prefix):
                           'whole_neighbor_avg_feature_norms',
                           'whole_neighbor_max_eigenVal_real',
                           'whole_neighbor_MAR_is_eigenstable',
-                          'whole_data_MAR_squared_error']
+                          'whole_data_MAR_squared_error',
+                          'S_score',
+                          'G2M_score']
+    # special bug fix for phase all the same value [S, S, S...]
+    if len(set(adata.obs['phase'])):
+        adata.obs['phase'] = np.zeros(len(adata))
     selected_obs0 = ['whole_neighbor_max_eigenVal_real', 'whole_neighbor_MAR_is_eigenstable', 'vel_norms']
     if config.use_dataset == 'kazu_mcf10a':
         whole_neighbor_obs += ['dosage']

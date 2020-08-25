@@ -62,11 +62,11 @@ def main():
 
     scv.pp.filter_and_normalize(adata, n_top_genes=n_top_genes)
     scv.pp.moments(adata)
-    scv.tl.velocity(adata)
+    scv.tl.velocity(adata, perc=config.perc)
     scv.tl.velocity_graph(adata)
     scv.tl.terminal_states(adata)
     scv.pl.velocity_embedding_stream(adata, save='vel_stream.png', show=False)
-
+    scv.tl.score_genes_cell_cycle(adata)
         
     root_cells = adata.obs['root_cells']
     end_cells = adata.obs['end_points']
@@ -106,7 +106,7 @@ def main():
         #     num_pc = n_top_genes
         #     pca_model = None
 
-
+        analyze_pca(adata)
         '''
         determine clusters
         '''
@@ -218,9 +218,6 @@ def main():
                 label_count_matrix = adata.X.todense()[indices, ...]
                 label_velocities = velocities[indices, ...]
 
-
-            if label == whole_data_label:
-                analyze_pca(pca_model)
             '''
             Neighbor MAR part
             '''
