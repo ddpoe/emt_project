@@ -117,7 +117,8 @@ def analyze_jacob_eigen_complex_plane(jacob):
     print('jacobian shape:', jacob.shape)
     
     reals, imgs = [num.real for num in eig_vals], [num.imag for num in eig_vals]
-    plt.scatter(reals, imgs)
+    rank = [float(i) for i in range(len(reals))]
+    plt.scatter(reals, imgs, c=rank)
     plt.xlabel('real')
     plt.ylabel('image')
     # plt.show()

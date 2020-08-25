@@ -164,7 +164,7 @@ python main.py\
        --only-whole-data\
        --use-pca\
        --selected-genes-jacobian\
-       --MAR-neighbor-num 40\
+       --MAR-neighbor-num 100\
        --use-dataset a549\
        --include-a549-days 0d\
        --lasso-alpha 0.0001\
@@ -175,7 +175,7 @@ python main.py\
        --only-whole-data\
        --use-pca\
        --selected-genes-jacobian\
-       --MAR-neighbor-num 40\
+       --MAR-neighbor-num 100\
        --use-dataset a549\
        --include-a549-days 0d\
        --lasso-alpha 0.0001\
@@ -186,7 +186,7 @@ python main.py\
        --only-whole-data\
        --use-pca\
        --selected-genes-jacobian\
-       --MAR-neighbor-num 40\
+       --MAR-neighbor-num 100\
        --use-dataset a549\
        --include-a549-days 0d\
        --lasso-alpha 0.0001\

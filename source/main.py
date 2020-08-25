@@ -25,13 +25,13 @@ def main():
     if config.use_dataset == 'a549':
         adata = scv.read_loom(config.a549_loom_data_path) # adata=dyn.read_loom(loom_data_path)
         meta = pd.read_csv(config.a549_meta_path)
-        adata = filter_a549_MET_samples(adata, meta, include_a549_days=config.include_a549_days)
         # gen_all_gene_pair_vector_field(adata, config.selected_genes_jacobian)
     elif config.use_dataset == 'pancreas':
         adata = scv.datasets.pancreas()
         adata.obs['Time'] = np.zeros(len(adata), dtype=np.int) # No time data
     elif config.use_dataset == 'kazu_mcf10a':
         adata = scv.read_loom(config.kazu_loom_data_path)
+        adata.var_names_make_unique() # make var unqiue;
         # add concentration information
         adata = process_kazu_loom_data(adata,
                                        config.kazu_cbc_gbc_mapping_path,
@@ -67,7 +67,10 @@ def main():
     scv.tl.terminal_states(adata)
     scv.pl.velocity_embedding_stream(adata, save='vel_stream.png', show=False)
     scv.tl.score_genes_cell_cycle(adata)
-        
+
+    if config.use_dataset == 'a549':
+        adata = filter_a549_MET_samples(adata, meta, include_a549_days=config.include_a549_days)
+    
     root_cells = adata.obs['root_cells']
     end_cells = adata.obs['end_points']
     print('root cell shape:', root_cells.shape)
@@ -93,18 +96,6 @@ def main():
         '''
         do whole pca once
         '''
-        # if use_pca:
-        #     print('applying PCA model to gene space')
-        #     num_pc = 100
-        #     pca_model = PCA(
-        #         n_components=num_pc,
-        #         random_state=7).fit(count_matrix)
-        #     # pca=PCA(n_components=n_top_genes, random_state=7).fit(count_matrix)
-        #     pca_count_matrix = pca_model.transform(count_matrix)
-
-        # else:
-        #     num_pc = n_top_genes
-        #     pca_model = None
 
         analyze_pca(adata)
         '''
@@ -222,7 +213,10 @@ def main():
             Neighbor MAR part
             '''
             mses, r2s, max_eigenval_reals, feature_norms, bias_norms, jacobs, MAR_models = neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num, pca_model=pca_model)
-            cluster_centroid_sample_mses, is_centroid_neighbor_indicator, closest_sample_id_in_indices = centroid_neighbor_MAR(label_count_matrix, label_velocities, neighbor_num=config.MAR_neighbor_num, pca_model=pca_model)
+            cluster_centroid_sample_mses, is_centroid_neighbor_indicator, closest_sample_id_in_indices = centroid_neighbor_MAR(label_count_matrix,
+                                                                                                                               label_velocities,
+                                                                                                                               neighbor_num=2000,
+                                                                                                                               pca_model=pca_model)
 
             analyze_group_jacobian(adata[indices], jacobs,
                                    pca_model=pca_model,
