@@ -192,3 +192,13 @@ python main.py\
        --lasso-alpha 0.0001\
        --perc 99\
        1>output.txt 2>&1&
+
+python main.py\
+       --only-whole-data\
+       --use-pca\
+       --selected-genes-jacobian\
+       --MAR-neighbor-num 100\
+       --use-dataset kazu_mcf10a\
+       --lasso-alpha 0.0001\
+       --kazu-dosage-range 0 1\
+       1>output.txt 2>&1&

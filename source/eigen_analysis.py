@@ -118,11 +118,21 @@ def analyze_jacob_eigen_complex_plane(jacob):
     
     reals, imgs = [num.real for num in eig_vals], [num.imag for num in eig_vals]
     rank = [float(i) for i in range(len(reals))]
-    plt.scatter(reals, imgs, c=rank)
+    plt.scatter(reals, imgs, c=rank, vmin=0, vmax=len(rank))
+    plt.colorbar()
+    plt.title('all eigenvalues spectrum')
     plt.xlabel('real')
     plt.ylabel('image')
-    # plt.show()
     plt.savefig('./figures/jacob_eigen_complex_plane.png')
+    plt.close()
+    num = 10
+    plt.scatter(reals[:num], imgs[:num], c=rank[:num], vmin=0, vmax=len(rank[:num]))
+    plt.colorbar()
+    plt.title('top %d eigenvalues spectrum'%num)
+    plt.xlabel('real')
+    plt.ylabel('image')
+    plt.savefig('./figures/jacob_eigen_complex_plane_top%d.png'%num)
+    plt.close()
     sorted_reals = sorted(reals, reverse=True)
     print(sorted_reals)
     sorted_imgs = sorted(imgs, reverse=True)
@@ -313,10 +323,10 @@ def analyze_MAR_biases(adata, models):
                                      save='bias_v_tsne_stream.png', show=False)
     biases_e_emb = PCA(n_components=2,
                        random_state=config.random_state).fit_transform(biases_e)
-    scv.pl.velocity_embedding_stream(adata,
-                                     X = biases_e_emb,
-                                     V = biases_v_emb,
-                                     save='bias_e_stream.png', show=False)
+    # scv.pl.velocity_embedding_stream(adata,
+    #                                  X = biases_e_emb,
+    #                                  V = biases_v_emb,
+    #                                  save='bias_e_stream.png', show=False)
     # plt.close()
     # plt.streamplot(biases_e_emb[0], biases_e_emb[1], biases_v_emb[0], biases_v_emb[1])
     # plt.savefig('./figures/matplotlib_bias_e_stream.png')
