@@ -1,18 +1,24 @@
 from utils import *
-
+from fokker_planck_analysis import *
 
 def test_process_kazu_data():
     adata = scv.read_loom(config.kazu_loom_data_path)
     # add concentration information
-    adata = process_kazu_loom_data(adata, config.kazu_cbc_gbc_mapping_path, config.kazu_gbc_info_path)
-    adata = process_kazu_loom_data(adata, config.kazu_cbc_gbc_mapping_path, config.kazu_gbc_info_path)
+    adata = process_kazu_loom_data(
+        adata,
+        config.kazu_cbc_gbc_mapping_path,
+        config.kazu_gbc_info_path)
+    adata = process_kazu_loom_data(
+        adata,
+        config.kazu_cbc_gbc_mapping_path,
+        config.kazu_gbc_info_path)
 
 
 def test_dynamo():
     adata = scv.read_loom(config.a549_loom_data_path)
     dyn.pp.recipe_monocle(adata)
     dyn.tl.dynamics(adata)
-    
+
     dyn.tl.reduceDimension(adata)
     dyn.tl.cell_velocities(adata)
     dyn.tl.cell_velocities(adata, basis='pca')
@@ -23,7 +29,23 @@ def test_dynamo():
     vectorfield = adata.uns['VecFld']['VecFld']
     dyn.pl.topography(adata)
     dyn.pl.save_fig(path='./results/test', ext='png')
+
+
+def test_fokker():
+    use_real_data = True
+    if use_real_data:
+        adata = scv.read_loom(config.a549_loom_data_path)
+        scv.pp.filter_and_normalize(adata, n_top_genes=config.n_top_genes)
+        scv.pp.moments(adata)
+        scv.tl.velocity(adata, perc=config.perc)
+        X = adata.X
+        V = adata.layers['velocity']
+    else:
+        X = np.identity(10)
+        V = np.identity(10)
+    fp_analyze(X, V)
+
     
 if __name__ == '__main__':
-    test_process_kazu_data()
-    
+    # test_process_kazu_data()
+    test_fokker()
