@@ -1,17 +1,60 @@
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--only-whole-data', help='do MAR in whole data only, or in each cluster as well?', default=False, action='store_true')
-parser.add_argument('--use-pca',
-                    help='use pca in each cluster or not', default=False, action='store_true')
-parser.add_argument('--include-a549-days', help='a list of days', nargs='*', default='all')
-parser.add_argument('--use-emt-gene-filter', help='', default=False, action='store_true')
-parser.add_argument('--selected-genes-jacobian', type=str, help='', default=[], nargs='*')
+parser.add_argument(
+    '--only-whole-data',
+    help='do MAR in whole data only, or in each cluster as well?',
+    default=False,
+    action='store_true')
+parser.add_argument(
+    '--use-pca',
+    help='use pca in each cluster or not',
+    default=False,
+    action='store_true')
+parser.add_argument(
+    '--include-a549-days',
+    help='a list of days',
+    nargs='*',
+    default='all')
+parser.add_argument(
+    '--use-emt-gene-filter',
+    help='',
+    default=False,
+    action='store_true')
+parser.add_argument(
+    '--selected-genes-jacobian',
+    type=str,
+    help='',
+    default=[],
+    nargs='*')
 parser.add_argument('--MAR-neighbor-num', type=int, help='')
-parser.add_argument('--use-dataset', type=str, help='', choices=['a549', 'pancreas', 'cook', 'kazu_mcf10a'])
+parser.add_argument(
+    '--use-dataset',
+    type=str,
+    help='',
+    choices=[
+        'a549',
+        'pancreas',
+        'cook',
+         'kazu_mcf10a'])
 parser.add_argument('--lasso-alpha', type=float, help='', default=0.0001)
 parser.add_argument('--result-dir', type=str, help='', default='./results')
-parser.add_argument('--kazu-dosage-range', nargs=2, type=float, help='', default=[0, float('inf')])
-parser.add_argument('--mode', type=str, help='', default='analyze_MAR', choices=['analyze_MAR', 'analyze_PCA'])
+parser.add_argument(
+    '--kazu-dosage-range',
+    nargs=2,
+    type=float,
+    help='',
+    default=[
+        0,
+         float('inf')])
+parser.add_argument(
+    '--mode',
+    type=str,
+    help='',
+    default='analyze_MAR',
+    choices=[
+        'analyze_MAR',
+        'analyze_PCA',
+        'analyze_fokker_planck'])
 parser.add_argument('--perc', type=int, help='', default=5)
 
 args = parser.parse_args()
@@ -34,9 +77,12 @@ lasso_alpha = args.lasso_alpha
 result_dir = args.result_dir
 kazu_dosage_range = args.kazu_dosage_range
 perc = args.perc
+n_top_genes = 2000
+fp_num_pc = 30
+
 
 random_state = 7
-# only_whole_data = False # 
+# only_whole_data = False #
 # use_pca = True
 # use_emt_gene_filter = False
 # day0_only = ['0d', '8h', '1d', '3d', '7d'] # which time subset do we want to use? set to 'all' to include all day data
@@ -49,6 +95,8 @@ two_gene_graph_dir = './figures/two_gene_vector_field'
 # use_dataset = 'a549'
 # use_dataset = 'pancreas'
 # calculate_velocity_with_all_gene = True
+
+
 def gen_config_folder_name():
     arg_strs = ['mode=' + mode.replace("_", '-'),
                 'dataset=' + use_dataset,

@@ -1,5 +1,6 @@
 from utils import *
 
+
 def gen_two_gene_graph(adata, g1, g2, save_dir):
     print([g1, g2])
     sub_data = adata[:, [g1, g2]]
@@ -12,17 +13,22 @@ def gen_two_gene_graph(adata, g1, g2, save_dir):
     path = os.path.join(save_dir,
                         filename)
     scv.pl.velocity_embedding_stream(sub_data, show=False, save=filename)
-    
 
-def gen_all_gene_pair_vector_field(adata, gene_list, save_dir=config.two_gene_graph_dir):
+
+def gen_all_gene_pair_vector_field(
+        adata,
+        gene_list,
+        save_dir=config.two_gene_graph_dir):
     make_dir(save_dir, abort=False)
     for i in range(len(gene_list)):
-        for j in range(i+1, len(gene_list)):
+        for j in range(i + 1, len(gene_list)):
             g1, g2 = gene_list[i], gene_list[j]
             if g1 in adata.var_names and g2 in adata.var_names:
                 gen_two_gene_graph(adata, g1, g2, save_dir)
             else:
-                print('both or one of (%s, %s) not in adata gene list' % (g1, g2)) 
+                print(
+                    'both or one of (%s, %s) not in adata gene list' %
+                    (g1, g2))
 
 
 def analyze_specific_cluster(adata, indices,
@@ -48,7 +54,7 @@ def analyze_specific_cluster(adata, indices,
         vel_norm = numpy.linalg.norm(cluster_data.layers['velocity'][i])
         vel_norms.append(vel_norm)
     cluster_data.obs['vel_norms'] = vel_norms
-    
+
     # use MSE and distance to define centroids
     N = len(cluster_data)
     # dist = np.zeros((N, N))
@@ -61,7 +67,7 @@ def analyze_specific_cluster(adata, indices,
     #         dist[i, j] = diff
     #         dist[j, i] = diff
     dist = calc_distance_matrix(cluster_data.layers['velocity'])
-    
+
     '''
     calculate neighbor MSE sum
     '''
@@ -70,7 +76,7 @@ def analyze_specific_cluster(adata, indices,
     for i in range(N):
         argsorted = np.argsort(dist[i, :])
         total_error = np.sum(errors[argsorted[:num_neighbors]])
-        neighbor_errors.append(total_error/num_neighbors)
+        neighbor_errors.append(total_error / num_neighbors)
 
     cluster_data.obs['whole_cluster_avg_neighbor_errors'] = neighbor_errors
     suptitle = 'cluster:' + str(cluster_label)
@@ -104,7 +110,8 @@ def analyze_specific_cluster(adata, indices,
         Q = pca_model.components_  # n components x n features
         jacob = Q.T @ jacob @ Q
 
-    analyze_adata_jacobian_genes(cluster_data, jacob, selected_genes, emt_genes)
+    analyze_adata_jacobian_genes(
+        cluster_data, jacob, selected_genes, emt_genes)
 
 
 def calc_eigen(jacob):
@@ -112,36 +119,44 @@ def calc_eigen(jacob):
     return np.array(eig_vals), np.array(eig_vectors)
 
 
-def analyze_jacob_eigen_complex_plane(jacob):
+def analyze_jacob_eigen_complex_plane(jacob, prefix=''):
     eig_vals, eig_vectors = calc_eigen(jacob)
     print('jacobian shape:', jacob.shape)
-    
-    reals, imgs = [num.real for num in eig_vals], [num.imag for num in eig_vals]
+
+    reals, imgs = [
+        num.real for num in eig_vals], [
+        num.imag for num in eig_vals]
     rank = [float(i) for i in range(len(reals))]
     plt.scatter(reals, imgs, c=rank, vmin=0, vmax=len(rank))
     plt.colorbar()
     plt.title('all eigenvalues spectrum')
     plt.xlabel('real')
     plt.ylabel('image')
-    plt.savefig('./figures/jacob_eigen_complex_plane.png')
+    plt.savefig('./figures/%s_jacob_eigen_complex_plane.png' % prefix)
     plt.close()
     num = 10
-    plt.scatter(reals[:num], imgs[:num], c=rank[:num], vmin=0, vmax=len(rank[:num]))
+    plt.scatter(reals[:num], imgs[:num], c=rank[:num],
+                vmin=0, vmax=len(rank[:num]))
     plt.colorbar()
-    plt.title('top %d eigenvalues spectrum'%num)
+    plt.title('top %d eigenvalues spectrum' % num)
     plt.xlabel('real')
     plt.ylabel('image')
-    plt.savefig('./figures/jacob_eigen_complex_plane_top%d.png'%num)
+    plt.savefig('./figures/%sjacob_eigen_complex_plane_top%d.png' % (prefix, num))
     plt.close()
     sorted_reals = sorted(reals, reverse=True)
     print(sorted_reals)
     sorted_imgs = sorted(imgs, reverse=True)
     print(sorted_imgs)
-    
+
     pass
 
 
-def analyze_adata_jacobian_genes(adata, jacob, selected_genes, emt_genes=None, topk=5):
+def analyze_adata_jacobian_genes(
+        adata,
+        jacob,
+        selected_genes,
+        emt_genes=None,
+        topk=5):
     genes = adata.var_names
     # adata.var_names.get_loc('FN1')
     emt_genes = set(emt_genes)
@@ -154,18 +169,23 @@ def analyze_adata_jacobian_genes(adata, jacob, selected_genes, emt_genes=None, t
         args = np.argsort(-np.abs(row_coef))
         top_genes = genes[args[:topk]]
 
-        is_in_emt = [1 if gene in emt_genes else 0 for gene in top_genes ]
+        is_in_emt = [1 if gene in emt_genes else 0 for gene in top_genes]
 
         print('########################################')
         print('for gene:', gene)
         print('top inhib/exhibit genes:', top_genes)
-        print('top inhib/exhibit genes coefs:', row_coef[args[:topk]])        
+        print('top inhib/exhibit genes coefs:', row_coef[args[:topk]])
         print('Whether top genes in emt gene list (1-yes, 0-no)', is_in_emt)
         print('number of top5 genes in known emt list:', sum(is_in_emt))
-        print('########################################')        
-    
+        print('########################################')
 
-def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None, pca_model=None):
+
+def neighbor_MAR(
+        data_mat,
+        labels,
+        neighbor_num=100,
+        dist_mat=None,
+        pca_model=None):
     '''
     labels: RNA velocities
     '''
@@ -175,14 +195,19 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None, pca_model=No
     num_feature = neighbor_num // 10
     if pca_model:
         ratio = sum(pca_model.explained_variance_ratio_[:num_feature])
-        print('neighborhood pca explained variance:', ratio, '#feature:', num_feature)
+        print(
+            'neighborhood pca explained variance:',
+            ratio,
+            '#feature:',
+            num_feature)
     data_mat = data_mat[:, :num_feature]
     sub_labels = labels[:, :num_feature]
     # sub_labels = labels
-    mses, r2s, max_eigenvals, feature_norms, bias_norms, jacobs, models = [], [], [], [], [], [], []
-    print('dist shape:',  dist_mat.shape)
+    mses, r2s, max_eigenvals, feature_norms, bias_norms, jacobs, models = [
+    ], [], [], [], [], [], []
+    print('dist shape:', dist_mat.shape)
     for i in range(len(data_mat)):
-        neighbors = np.argsort(dist_mat[i, :])[:neighbor_num]        
+        neighbors = np.argsort(dist_mat[i, :])[:neighbor_num]
         specific_mat = data_mat[neighbors, :]
         neighbor_labels = sub_labels[neighbors, :]
         model = LinearRegression().fit(specific_mat, neighbor_labels)
@@ -209,7 +234,13 @@ def neighbor_MAR(data_mat, labels, neighbor_num=100, dist_mat=None, pca_model=No
     return mses, r2s, max_eigenvals, feature_norms, bias_norms, jacobs, models
 
 
-def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_model=None, center=None):
+def centroid_neighbor_MAR(
+        data_mat,
+        labels,
+        neighbor_num,
+        dist_mat=None,
+        pca_model=None,
+        center=None):
     '''
     legacy code for analyzing only 1 centroid for fast validating some possible points.
     we can ignore this part.
@@ -226,7 +257,7 @@ def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_mod
     is_center_neighbors = np.full(len(data_mat), False)
     is_center_neighbors[neighbors] = True
     # print('neighbor len:', neighbors)
-    
+
     specific_mat = data_mat[neighbors, :num_feature]
     neighbor_labels = labels[neighbors, :num_feature]
     # neighbor_labels = labels[neighbors, :] # predict all velocities
@@ -240,7 +271,8 @@ def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_mod
     jacob = model.coef_
     if not (pca_model is None):
         pca_jacob = jacob
-        Q = pca_model.components_[:num_feature, :]  # n principle components x n original features
+        # n principle components x n original features
+        Q = pca_model.components_[:num_feature, :]
         gene_jacob = Q.T @ jacob @ Q
 
         print('PCA space jacob:')
@@ -250,37 +282,51 @@ def centroid_neighbor_MAR(data_mat, labels, neighbor_num, dist_mat=None, pca_mod
     return sample_mses, is_center_neighbors, min_id
 
 
-def analyze_group_jacobian(adata, jacobs, topk_eigen=4, topk_gene=100, pca_model=None, group_name='someGroup', top_genes_for_plot=50, gene_count_df=None):
+def analyze_group_jacobian(
+        adata,
+        jacobs,
+        topk_eigen=4,
+        topk_gene=100,
+        pca_model=None,
+        group_name='someGroup',
+        top_genes_for_plot=50,
+        gene_count_df=None):
     '''
     analyze one group's jacob and gene
     '''
     if pca_model:
-        Q = pca_model.components_ # n components x n features
+        Q = pca_model.components_  # n components x n features
 
     topk_gene_lists = []
     adata.uns['top_eig_genes'] = [[] for _ in range(len(adata))]
     for i, jacob in enumerate(jacobs):
         eig_vals, eig_vectors = calc_eigen(jacob)
-        reals, imgs = [num.real for num in eig_vals], [num.imag for num in eig_vals]
+        reals, imgs = [
+            num.real for num in eig_vals], [
+            num.imag for num in eig_vals]
         args = np.argsort(-np.abs(reals))
-        
+
         topk_eigenvals = np.array(eig_vals[args[:topk_eigen]])
         # topk_eigenvectors = eig_vectors[args[:topk_eigen], ...]
         if pca_model:
-            topk_eigenvectors = (Q.T[:, :config.MAR_neighbor_num//10]) @ np.array(eig_vectors) # columns are eigenvectors by math convention
+            # columns are eigenvectors by math convention
+            topk_eigenvectors = (
+                Q.T[:, :config.MAR_neighbor_num // 10]) @ np.array(eig_vectors)
             topk_eigenvectors = topk_eigenvectors.T
             # topk_eigenvectors = topk_eigenvectors[..., :topk_eigen]
         # print('gene eigen vector shape:', topk_eigenvectors.shape)
         significant_genes = set()
         for j in range(len(topk_eigenvectors)):
-            topk_genes_args = np.argsort(-np.abs(topk_eigenvectors[j]))[:topk_gene] # based on |c| if complex
+            # based on |c| if complex
+            topk_genes_args = np.argsort(
+                -np.abs(topk_eigenvectors[j]))[:topk_gene]
             significant_genes.update(topk_genes_args)
         # print('significant genes:', significant_genes)
         adata.uns['top_eig_genes'][i] = list(significant_genes)
 
     top_eig_genes = adata.uns['top_eig_genes']
     gene_names = adata.var_names
-    count_map = {name:0 for name in gene_names}
+    count_map = {name: 0 for name in gene_names}
     for i in range(len(top_eig_genes)):
         for j in range(len(top_eig_genes[i])):
             name = gene_names[top_eig_genes[i][j]]
@@ -292,10 +338,19 @@ def analyze_group_jacobian(adata, jacobs, topk_eigen=4, topk_gene=100, pca_model
 
     if gene_count_df is None:
         df = pd.DataFrame(data=items[:, 1], index=items[:, 0])
-        df.to_csv(os.path.join('./figures', group_name + '_geneCountInMaxEigenAnalysis.csv'))
+        df.to_csv(
+            os.path.join(
+                './figures',
+                group_name +
+                '_geneCountInMaxEigenAnalysis.csv'))
     else:
-        gene_count_df[group_name] = pd.Series(data=items[:, 1], index=items[:, 0])
-        gene_count_df.to_csv(os.path.join('./', group_name + 'geneCountInMaxEigenAnalysis.csv'))
+        gene_count_df[group_name] = pd.Series(
+            data=items[:, 1], index=items[:, 0])
+        gene_count_df.to_csv(
+            os.path.join(
+                './',
+                group_name +
+                'geneCountInMaxEigenAnalysis.csv'))
 
 
 def analyze_MAR_biases(adata, models):
@@ -311,18 +366,21 @@ def analyze_MAR_biases(adata, models):
         biases_e.append(bias_e)
 
     # note only 2 dim of bias_v will be drawn: need to transform
-    biases_v_emb = PCA(n_components=2,
-                       random_state=config.random_state).fit_transform(biases_v)
-    biases_v_emb_tsne = TSNE(n_components=2,
-                       random_state=config.random_state).fit_transform(biases_v)    
+    biases_v_emb = PCA(
+        n_components=2,
+        random_state=config.random_state).fit_transform(biases_v)
+    biases_v_emb_tsne = TSNE(
+        n_components=2,
+        random_state=config.random_state).fit_transform(biases_v)
     scv.pl.velocity_embedding_stream(adata,
-                                     V = biases_v_emb,
+                                     V=biases_v_emb,
                                      save='bias_v_pca_stream.png', show=False)
     scv.pl.velocity_embedding_stream(adata,
-                                     V = biases_v_emb_tsne,
+                                     V=biases_v_emb_tsne,
                                      save='bias_v_tsne_stream.png', show=False)
-    biases_e_emb = PCA(n_components=2,
-                       random_state=config.random_state).fit_transform(biases_e)
+    biases_e_emb = PCA(
+        n_components=2,
+        random_state=config.random_state).fit_transform(biases_e)
     # scv.pl.velocity_embedding_stream(adata,
     #                                  X = biases_e_emb,
     #                                  V = biases_v_emb,
@@ -334,7 +392,7 @@ def analyze_MAR_biases(adata, models):
 
 
 def analyze_pca(adata):
-    pca_model = PCA(n_components=None, # use all
+    pca_model = PCA(n_components=None,  # use all
                     random_state=7).fit(adata.X.todense())
     components = pca_model.components_
     cum_var = np.cumsum(pca_model.explained_variance_ratio_)
@@ -345,11 +403,11 @@ def analyze_pca(adata):
     plt.title(title)
     plt.savefig('./figures/' + title + '.png')
     plt.close()
-    
+
     plt.plot(xs, cum_var)
     title = 'pca_cum_variance'
     plt.title(title)
-    plt.savefig('./figures/' + title + '.png')    
+    plt.savefig('./figures/' + title + '.png')
     plt.close()
 
     plt.plot(xs, pca_model.explained_variance_ratio_)
@@ -365,7 +423,7 @@ def analyze_pca(adata):
     plt.title(title)
     plt.savefig('./figures/' + title + '.png')
     plt.close()
-    
+
     plt.plot(xs, pca_model.explained_variance_ratio_)
     title = 'pca_indexVsExplainedRatio'
     plt.title(title)
@@ -377,21 +435,21 @@ def analyze_pca(adata):
     plt.title(title)
     plt.savefig('./figures/' + title + '.png')
     plt.close()
-    
+
     plt.plot(xs, np.log(pca_model.singular_values_))
     title = 'pca_indexVsLogSingularVal'
     plt.title(title)
     plt.savefig('./figures/' + title + '.png')
     plt.close()
-    
+
     plt.hist(pca_model.singular_values_)
     title = 'pca_singularValue_hist'
     plt.title(title)
-    plt.savefig('./figures/' + title + '.png')    
+    plt.savefig('./figures/' + title + '.png')
     plt.close()
-    
+
     plt.hist(np.log(pca_model.singular_values_))
     title = 'pca_log_value_hist'
     plt.title(title)
-    plt.savefig('./figures/' + title + '.png')        
+    plt.savefig('./figures/' + title + '.png')
     plt.close()

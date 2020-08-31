@@ -31,12 +31,13 @@ import scipy.spatial.distance
 import matplotlib
 matplotlib.use('Agg')
 
+
 def calc_distance_matrix(data):
     dist_mat = scipy.spatial.distance.pdist(data, metric='euclidean')
     dist_mat = scipy.spatial.distance.squareform(dist_mat)
     return dist_mat
 
-        
+
 def get_optimal_K(X, kmin=1, kmax=21):
     distortions = []
     inertias = []
@@ -66,7 +67,7 @@ def read_list(path):
             data.append(line.replace('\n', ''))
         return data
 
-    
+
 def make_dir(path, abort=True):
     if os.path.exists(path):
         print(path + ' : exists')
@@ -83,8 +84,11 @@ def make_dir(path, abort=True):
         os.makedirs(path)
         return True
 
-    
-def filter_a549_MET_samples(adata, meta, include_a549_days=config.include_a549_days):
+
+def filter_a549_MET_samples(
+        adata,
+        meta,
+        include_a549_days=config.include_a549_days):
     cell_ids = np.array(meta["Unnamed: 0"]) + 'x'
     for ID in range(len(cell_ids)):
         # This is needed to make the cell ids have the same syntax as the loom
@@ -105,7 +109,7 @@ def filter_a549_MET_samples(adata, meta, include_a549_days=config.include_a549_d
         is_day0 = np.array([time in include_a549_days for time in time_raw])
         adata = adata[is_day0]
         if len(include_a549_days) == 1:
-            adata.obs['Time'] = 'r' # prevent SCVELO plot bug
+            adata.obs['Time'] = 'r'  # prevent SCVELO plot bug
     else:
         is_EMT = np.array([time.find('_rm') == -1 for time in time_raw])
         adata = adata[is_EMT]
@@ -146,15 +150,15 @@ def dosage_count(adata):
     for dosage in all_dosage_count:
         print('dosage:', dosage, '#samples:', all_dosage_count[dosage])
 
-        
+
 def process_kazu_loom_data(adata, cbc2gbc_path, gbc_info_path, dosage_range):
     '''
-    format kazu loom data: 
-    1) modify observations name 
-    2) add dosage information 
+    format kazu loom data:
+    1) modify observations name
+    2) add dosage information
     3) discard any samples without meta dosage info
     '''
-    adata_cbc_codes = [x[x.find(':')+1:] for x in list(adata.obs_names)]
+    adata_cbc_codes = [x[x.find(':') + 1:] for x in list(adata.obs_names)]
     adata.obs_names = adata_cbc_codes
     adata.obs['dosage'] = np.zeros(len(adata), dtype=np.float)
     cbc2gbc = read_CBC_GBC_mapping(cbc2gbc_path)
@@ -171,12 +175,15 @@ def process_kazu_loom_data(adata, cbc2gbc_path, gbc_info_path, dosage_range):
             gbc = cbc2gbc[cbc]
             adata.obs['dosage'][cbc] = gbc2dosage[gbc]
     adata = adata[is_cbc_in_mapping]
-    print('total observation discarded due to no gbc/cbc info:', no_meta_info_count)
+    print(
+        'total observation discarded due to no gbc/cbc info:',
+        no_meta_info_count)
     print('new #observations after processing kazu loom data:', len(adata))
     # dosage statistics
     dosage_count(adata)
     # filter by dosage
-    adata = adata[ np.logical_and((dosage_range[0] <= adata.obs['dosage']), (adata.obs['dosage'] <= dosage_range[1]))]
+    adata = adata[np.logical_and(
+        (dosage_range[0] <= adata.obs['dosage']), (adata.obs['dosage'] <= dosage_range[1]))]
     # dosage stats after filtering
     print('all dosage counting after filtering by dosage range passed in config parameter:')
     dosage_count(adata)
@@ -196,7 +203,8 @@ def gen_analysis_figures(adata, prefix):
     # special bug fix for phase all the same value [S, S, S...]
     if len(set(adata.obs['phase'])):
         adata.obs['phase'] = np.zeros(len(adata))
-    selected_obs0 = ['whole_neighbor_max_eigenVal_real', 'whole_neighbor_MAR_is_eigenstable', 'vel_norms']
+    selected_obs0 = ['whole_neighbor_max_eigenVal_real',
+                     'whole_neighbor_MAR_is_eigenstable', 'vel_norms']
     if config.use_dataset == 'kazu_mcf10a':
         whole_neighbor_obs += ['dosage']
     # debug
@@ -215,26 +223,28 @@ def gen_analysis_figures(adata, prefix):
             show=False)
         scv.pl.velocity_embedding_stream(
             adata,
-            color=whole_neighbor_obs +  ['clusters_neighbor_MAR_r2',
-                                         'clusters_neighbor_MAR_mse',
-                                         'clusters_centroid_neighborhood_sample_mses',
-                                         'is_centroid_neighbor_indicator',
-                                         'Clusters',
-                                         'vel_norms'],
+            color=whole_neighbor_obs + ['clusters_neighbor_MAR_r2',
+                                        'clusters_neighbor_MAR_mse',
+                                        'clusters_centroid_neighborhood_sample_mses',
+                                        'is_centroid_neighbor_indicator',
+                                        'Clusters',
+                                        'vel_norms'],
             colorbar=True,
             save=prefix + '_neighbor_MAR_stats.png',
             show=False)
 
     else:
-        scv.pl.velocity_embedding_stream(adata,
-                                         color=[
-                                             'root_cells',
-                                             'end_points',
-                                             'whole_data_MAR_squared_error',
-                                             'Clusters'],
-                                         save=prefix + '_error_root_end_points.png',
-                                         show=False)
-        
+        scv.pl.velocity_embedding_stream(
+            adata,
+            color=[
+                'root_cells',
+                'end_points',
+                'whole_data_MAR_squared_error',
+                'Clusters'],
+            save=prefix +
+            '_error_root_end_points.png',
+            show=False)
+
         scv.pl.velocity_embedding_stream(adata,
                                          color=whole_neighbor_obs + ['Time',
                                                                      'Clusters',
@@ -242,7 +252,9 @@ def gen_analysis_figures(adata, prefix):
                                          save=prefix + '_neighbor_MAR_stats.png',
                                          show=False)
 
-        scv.pl.velocity_embedding_stream(adata,
-                                         color=selected_obs0,
-                                         save=prefix + '_eigenVal_specific_analysis.png',
-                                         show=False)
+        scv.pl.velocity_embedding_stream(
+            adata,
+            color=selected_obs0,
+            save=prefix +
+            '_eigenVal_specific_analysis.png',
+            show=False)

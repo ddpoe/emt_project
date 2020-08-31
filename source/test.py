@@ -33,12 +33,16 @@ def test_dynamo():
 
 def test_fokker():
     use_real_data = True
+    use_real_data = False
     if use_real_data:
+        meta = pd.read_csv(config.a549_meta_path)        
         adata = scv.read_loom(config.a549_loom_data_path)
+        adata = filter_a549_MET_samples(
+            adata, meta, include_a549_days=config.include_a549_days)        
         scv.pp.filter_and_normalize(adata, n_top_genes=config.n_top_genes)
         scv.pp.moments(adata)
         scv.tl.velocity(adata, perc=config.perc)
-        X = adata.X
+        X = adata.X.todense()
         V = adata.layers['velocity']
     else:
         X = np.identity(10)
