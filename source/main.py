@@ -45,7 +45,6 @@ def main():
                                        config.kazu_dosage_range)
         adata.obs['Time'] = np.zeros(len(adata), dtype=np.int)  # No time data
 
-
     '''
     filter by emt genes?
     '''
@@ -353,10 +352,10 @@ def main():
             for i in range(sample_num):
                 # print('Xi shape:', X[i].shape, 'Vi shape:', V[i].shape)
                 V[i] = V[i] / X[i]
-                V[i][X[i] < 1e-8] = 0 # handle 0 cases        
+                V[i][X[i] < 1e-8] = 0  # handle 0 cases
         pca_model = PCA(n_components=config.fp_num_pc,
                         random_state=7).fit(X)
-        X = pca_model.transform(X) # centered X version
+        X = pca_model.transform(X)  # centered X version
         # V = pca_model.transform(V)
         V = V @ np.array(pca_model.components_).T
         fp_analyze(X, V)

@@ -141,7 +141,9 @@ def analyze_jacob_eigen_complex_plane(jacob, prefix=''):
     plt.title('top %d eigenvalues spectrum' % num)
     plt.xlabel('real')
     plt.ylabel('image')
-    plt.savefig('./figures/%sjacob_eigen_complex_plane_top%d.png' % (prefix, num))
+    plt.savefig(
+        './figures/%sjacob_eigen_complex_plane_top%d.png' %
+        (prefix, num))
     plt.close()
     sorted_reals = sorted(reals, reverse=True)
     print(sorted_reals)
