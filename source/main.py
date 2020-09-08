@@ -61,10 +61,10 @@ def main():
     print('using %d top dispersed genes' % n_top_genes)
 
     # print('flag3')
-    count_matrix = adata.X.todense()[:, ...]
+    original_count_matrix = adata.X.todense()[:, ...]
+    original_adata = adata.copy()
     print('count matrix nonzerorate:', np.count_nonzero(
-        count_matrix) / np.prod(count_matrix.shape))
-
+        original_count_matrix) / np.prod(original_count_matrix.shape))
     scv.pp.filter_and_normalize(adata, n_top_genes=n_top_genes)
     scv.pp.moments(adata)
     scv.tl.velocity(adata, perc=config.perc)
@@ -345,14 +345,16 @@ def main():
     elif config.mode == 'analyze_fokker_planck':
         X = np.array(adata.X.todense())
         V = np.array(adata.layers['velocity'])
+        original_top_X = np.array(original_adata[:, adata.var_names]\
+                                  .X.todense()[:, ...])
         print('X shape:', X.shape, 'V shape:', V.shape)
         need_log_transform = True
         sample_num = X.shape[0]
         if need_log_transform:
             for i in range(sample_num):
                 # print('Xi shape:', X[i].shape, 'Vi shape:', V[i].shape)
-                V[i] = V[i] / X[i]
-                V[i][X[i] < 1e-8] = 0  # handle 0 cases
+                V[i] = V[i] / original_top_X[i]
+                V[i][original_top_X[i] < 1e-8] = 0  # handle 0 cases
         pca_model = PCA(n_components=config.fp_num_pc,
                         random_state=7).fit(X)
         X = pca_model.transform(X)  # centered X version
