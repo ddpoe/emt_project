@@ -32,6 +32,11 @@ import matplotlib
 matplotlib.use('Agg')
 
 
+def compute_gene_space_jacob_from_pca_space(jacob, pca_model):
+    Q = pca_model.components_
+    jacob_ = Q.T @ jacob @ Q
+    return jacob_
+    
 def calc_distance_matrix(data):
     dist_mat = scipy.spatial.distance.pdist(data, metric='euclidean')
     dist_mat = scipy.spatial.distance.squareform(dist_mat)

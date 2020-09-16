@@ -361,7 +361,7 @@ def main():
         X = pca_model.transform(X)  # centered X version
         # V = pca_model.transform(V)
         V = V @ np.array(pca_model.components_).T
-        fp_analyze(X, V, fp_genes)
+        fp_analyze(X, V, fp_genes, pca_model)
     else:
         print("ERROR: mode not found")
     # main_graphlasso()
