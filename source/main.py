@@ -343,6 +343,7 @@ def main():
             only_whole_data=config.only_whole_data,
             use_pca=config.use_pca)
     elif config.mode == 'analyze_fokker_planck':
+        fp_genes = list(adata.var_names)
         X = np.array(adata.X.todense())
         V = np.array(adata.layers['velocity'])
         original_top_X = np.array(original_adata[:, adata.var_names]\
@@ -360,7 +361,7 @@ def main():
         X = pca_model.transform(X)  # centered X version
         # V = pca_model.transform(V)
         V = V @ np.array(pca_model.components_).T
-        fp_analyze(X, V)
+        fp_analyze(X, V, fp_genes)
     else:
         print("ERROR: mode not found")
     # main_graphlasso()

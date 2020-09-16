@@ -6,7 +6,7 @@ def is_diagonal_mat(A):
     return np.count_nonzero(A - np.diag(np.diagonal(A))) == np.prod(A.shape)
 
 
-def fp_analyze(X, V, need_log_transform=True):
+def fp_analyze(X, V, gene_list, need_log_transform=True):
     '''
     scvelo uses nature log normalization
     input X, V are in PCA space and all log transformed version
@@ -53,4 +53,9 @@ def fp_analyze(X, V, need_log_transform=True):
 
     F_eigenvals, F_eigenvectors = calc_eigen(F_)
     F_reals = np.array([num.real for num in F_eigenvals])
+    np.savetxt('fp_gene_list.txt', gene_list, fmt="%s")
+    np.save('F.npy', F)
+    np.save('F_adjusted.npy', F_)
+    np.save('F_eigenvectors.npy', F_eigenvectors)
+    
     print('#F eigenval real part > 0:', np.sum(F_reals > 0))
