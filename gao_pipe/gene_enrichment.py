@@ -56,6 +56,7 @@ goeaobj = GOEnrichmentStudyNS(
 symbols=np.zeros(len(GeneID2nt_homo.keys()),dtype='U100')
 geneids=np.zeros(len(GeneID2nt_homo.keys()),dtype=int)
 
+#Creating a lookup table to convert the gene symbols to the gene ids needed for the gene enrichment analysis
 for idx,key in enumerate(GeneID2nt_homo.keys()):
     symbols[idx]=GeneID2nt_homo[key].Symbol
     geneids[idx]=GeneID2nt_homo[key].GeneID
